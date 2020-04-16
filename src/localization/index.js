@@ -30,5 +30,5 @@ export const messages = {
   en: en_flat,
   fi: {...en_flat, ...flattenMessages(fi)},
   es: {...en_flat, ...flattenMessages(es)},
-  ca: {...en_flat, ...flattenMessages(ca)},
+  ca: {...en_flat, ...flattenMessages(ca)}
 };
