@@ -40,7 +40,7 @@ const LIBRARY_BUNDLE_CONFIG = env => ({
   output: {
     // Generate the bundle in dist folder
     path: OUTPUT_DIR,
-    filename: 'keplergl.min.js',
+    filename: 'keplergl.2.1.2.ICGC.min.js',
     globalObject: 'this',
     library: '[name]',
     libraryTarget: 'umd'

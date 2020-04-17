@@ -56,7 +56,7 @@ const LayerBlendingSelector = ({layerBlending, updateLayerBlending, intl}) => {
   ]);
 
   return (
-    <SidePanelSection>
+    <SidePanelSection id="side_panel_blending">
       <PanelLabel>
         <FormattedMessage id="layerBlending.title" />
       </PanelLabel>
