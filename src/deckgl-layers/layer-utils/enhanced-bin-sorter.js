@@ -18,18 +18,41 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import en from './en';
-import {flattenMessages} from 'utils/locale-utils';
-import {LOCALE_CODES} from './locales';
+import {_BinSorter as BinSorter} from '@deck.gl/aggregation-layers';
 
-const en_flat = flattenMessages(en);
+export default class EnhancedBinSorter extends BinSorter {
+  getValueRange(percentileRange) {
+    if (!this.sortedBins) {
+      this.sortedBins = this.aggregatedBins.sort((a, b) =>
+        a.value > b.value ? 1 : a.value < b.value ? -1 : 0
+      );
+    }
+    if (!this.sortedBins.length) {
+      return [];
+    }
+    let lowerIdx = 0;
+    let upperIdx = this.sortedBins.length - 1;
 
-export const messages = Object.keys(LOCALE_CODES).reduce(
-  (acc, key) => ({
-    ...acc,
-    [key]: key === 'en' ? en_flat : {...en_flat, ...flattenMessages(require(`./${key}`).default)}
-  }),
-  {}
-);
+    if (Array.isArray(percentileRange)) {
+      const idxRange = this._percentileToIndex(percentileRange);
+      lowerIdx = idxRange[0];
+      upperIdx = idxRange[1];
+    }
 
-export {LOCALE_CODES, LOCALES} from './locales';
+    return [this.sortedBins[lowerIdx].value, this.sortedBins[upperIdx].value];
+  }
+
+  getValueDomainByScale(scale, [lower = 0, upper = 100] = []) {
+    if (!this.sortedBins) {
+      this.sortedBins = this.aggregatedBins.sort((a, b) =>
+        a.value > b.value ? 1 : a.value < b.value ? -1 : 0
+      );
+    }
+    if (!this.sortedBins.length) {
+      return [];
+    }
+    const indexEdge = this._percentileToIndex([lower, upper]);
+
+    return this._getScaleDomain(scale, indexEdge);
+  }
+}
