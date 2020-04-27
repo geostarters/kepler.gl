@@ -27,7 +27,7 @@ import {
   EXPORT_IMG_RATIOS,
   EXPORT_DATA_TYPE
 } from 'constants/default-settings';
-import {exportMapToHTML} from 'templates/export-map-html';
+import {exportMapToHTML} from 'templates/export-map-icgc-html';
 import {formatCsv} from 'processors/data-processor';
 import get from 'lodash.get';
 import {set, generateHashId} from 'utils/utils';
@@ -38,7 +38,7 @@ import KeplerGlSchema from 'schemas';
  * Default file names
  */
 export const DEFAULT_IMAGE_NAME = 'kepler-gl.png';
-export const DEFAULT_HTML_NAME = 'kepler.gl.html';
+export const DEFAULT_HTML_NAME = 'mapa.html';
 export const DEFAULT_JSON_NAME = 'keplergl.json';
 export const DEFAULT_DATA_NAME = 'kepler-gl';
 

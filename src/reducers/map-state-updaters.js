@@ -77,9 +77,9 @@ const mapStateUpdaters = null;
 export const INITIAL_MAP_STATE = {
   pitch: 0,
   bearing: 0,
-  latitude: 37.75043,
-  longitude: -122.34679,
-  zoom: 9,
+  latitude: 41.602,
+  longitude: 1.239,
+  zoom: 7.55,
   dragRotate: false,
   width: 800,
   height: 800,

@@ -228,6 +228,14 @@ export const DEFAULT_MAP_STYLES = [
   {
     id: 'dark',
     accessToken: null,
+    label: 'Gris',
+    url: 'https://geoserveis.icgc.cat/contextmaps/positron.json',
+    icon: 'https://openicgc.github.io/img/positron-min.gif',
+    layerGroups: DEFAULT_LAYER_GROUPS
+  },
+  {
+    id: 'gris',
+    accessToken: null,
     label: 'ICGC oficial',
     url: 'https://geoserveis.icgc.cat/contextmaps/icgc.json',
     icon: 'https://openicgc.github.io/img/icgc-min.gif',
