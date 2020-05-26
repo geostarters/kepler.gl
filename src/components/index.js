@@ -30,6 +30,7 @@ export {default as MapContainerFactory} from './map-container';
 export {default as BottomWidgetFactory} from './bottom-widget';
 export {default as ModalContainerFactory} from './modal-container';
 export {default as PlotContainerFactory} from './plot-container';
+export {default as GeocoderPanelFactory} from './geocoder-panel';
 
 // // side panel factories
 export {
@@ -89,13 +90,16 @@ export {default as AnimationPlaybacksFactory} from './common/animation-control/p
 export {default as FloatingTimeDisplayFactory} from './common/animation-control/floating-time-display';
 export {default as DatasetSquare} from './common/styled-components';
 
-// // Filters
+// // Filters factory
 export {default as TimeWidgetFactory} from './filters/time-widget';
 export {default as SingleSelectFilterFactory} from './filters/single-select-filter';
 export {default as MultiSelectFilterFactory} from './filters/multi-select-filter';
 export {default as TimeRangeFilterFactory} from './filters/time-range-filter';
-
 export {default as RangeFilterFactory} from './filters/range-filter';
+
+// // Editor Factory
+export {default as EditorFactory} from './editor/editor';
+export {default as FeatureActionPanelFactory} from './editor/feature-action-panel';
 
 // Injector
 export {injector, withState} from './injector';

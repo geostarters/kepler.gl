@@ -112,8 +112,14 @@ export default {
       geojson: 'geojson',
       cluster: 'cluster',
       icon: 'icona',
+<<<<<<< HEAD
       heatmap: ' heatmap',
       h3: 'H3',
+=======
+      heatmap: 'heatmap',
+      hexagon: 'hexàgon',
+      hexagonid: 'H3',
+>>>>>>> 8429de1003478b5231a84edaf4fce50d19bb81b8
       trip: 'viatge',
       s2: 'S2',
       '3d': '3D'
