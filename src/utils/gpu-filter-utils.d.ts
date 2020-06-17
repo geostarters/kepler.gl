@@ -18,17 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import window from 'global/window';
-/* eslint-disable no-use-before-define */
-const KeyEvent = Object.assign({}, window.KeyEvent);
-/* eslint-enable no-use-before-define */
+import {Filter, Field, GpuFilter} from 'reducers/vis-state-updaters';
 
-KeyEvent.DOM_VK_UP = KeyEvent.DOM_VK_UP || 38;
-KeyEvent.DOM_VK_DOWN = KeyEvent.DOM_VK_DOWN || 40;
-KeyEvent.DOM_VK_BACK_SPACE = KeyEvent.DOM_VK_BACK_SPACE || 8;
-KeyEvent.DOM_VK_RETURN = KeyEvent.DOM_VK_RETURN || 13;
-KeyEvent.DOM_VK_ENTER = KeyEvent.DOM_VK_ENTER || 14;
-KeyEvent.DOM_VK_ESCAPE = KeyEvent.DOM_VK_ESCAPE || 27;
-KeyEvent.DOM_VK_TAB = KeyEvent.DOM_VK_TAB || 9;
-
-export default KeyEvent;
+export function setFilterGpuMode(filter: Filter, filters: Filter[]): Filter;
+export function assignGpuChannel(filter: Filter, filters: Filter[]): Filter;
+export function assignGpuChannels(allFilters: Filter[]): Filter[];
+export function resetFilterGpuMode( filters: Filter[]): Filter[];
+export function getGpuFilterProps(filters: Filter[], dataId: string, fields: Field[]): GpuFilter;
+export function getDatasetFieldIndexForFilter(dataId: string, filter: Filter): number;

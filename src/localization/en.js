@@ -122,6 +122,7 @@ export default {
     }
   },
   layerVisConfigs: {
+    angle: 'Angle',
     strokeWidth: 'Stroke Width (Pixels)',
     strokeWidthRange: 'Stroke Width Range',
     radius: 'Radius',
@@ -435,6 +436,10 @@ export default {
   },
   geocoder: {
     title: 'Geocoder'
+  },
+  fieldSelector: {
+    clearAll: 'Clear All',
+    formatting: 'Formatting'
   },
   density: 'density',
   'Bug Report': 'Bug Report',

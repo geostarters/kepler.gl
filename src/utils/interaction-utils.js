@@ -26,6 +26,9 @@ import {
 } from 'constants/default-settings';
 import {Messages, Crosshairs, CursorClick, Pin} from 'components/common/icons/index';
 
+/**
+ * @type {typeof import('./interaction-utils').getDefaultInteraction}
+ */
 export function getDefaultInteraction() {
   return {
     tooltip: {
@@ -68,10 +71,13 @@ export const BRUSH_CONFIG = {
   range: [0, 50]
 };
 
+/**
+ * @type {typeof import('./interaction-utils').findFieldsToShow}
+ */
 export function findFieldsToShow({fields, id}) {
   // first find default tooltip fields for trips
   const fieldsToShow = DEFAULT_TOOLTIP_FIELDS.reduce((prev, curr) => {
-    if (fields.find(({name}) => curr === name)) {
+    if (fields.find(({name}) => curr.name === name)) {
       prev.push(curr);
     }
     return prev;
@@ -96,7 +102,12 @@ function autoFindTooltipFields(fields) {
       type !== 'object'
   );
 
-  return fieldsToShow.slice(0, MAX_DEFAULT_TOOLTIPS).map(d => d.name);
+  return fieldsToShow.slice(0, MAX_DEFAULT_TOOLTIPS).map(({name}) => {
+    return {
+      name,
+      format: null
+    };
+  });
 }
 
 function _mergeFieldPairs(pairs) {
