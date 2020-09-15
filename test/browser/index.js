@@ -18,11 +18,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+const configure = require('enzyme').configure;
+const Adapter = require('enzyme-adapter-react-16');
+configure({adapter: new Adapter()});
+
 // component tests
-import './components';
+require('./components');
 
 // test layers
-import './layer-tests';
+require('./layer-tests');
 
 // test reducers
-import './reducers';
+require('./reducers');
+
+// test processors
+require('./file-handler');

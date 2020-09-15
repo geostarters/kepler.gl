@@ -27,9 +27,15 @@ import xor from 'lodash.xor';
 import copy from 'copy-to-clipboard';
 import {parseFieldValue} from 'utils/data-utils';
 // Tasks
-import {LOAD_FILE_TASK} from 'tasks/tasks';
+import {LOAD_FILE_TASK, UNWRAP_TASK, PROCESS_FILE_DATA, DELAY_TASK} from 'tasks/tasks';
 // Actions
-import {loadFilesErr, loadFileSuccess, loadNextFile} from 'actions/vis-state-actions';
+import {
+  loadFilesErr,
+  loadFilesSuccess,
+  loadFileStepSuccess,
+  loadNextFile,
+  nextFileBatch
+} from 'actions/vis-state-actions';
 // Utils
 import {findFieldsToShow, getDefaultInteraction} from 'utils/interaction-utils';
 import {
@@ -51,16 +57,9 @@ import {assignGpuChannel, setFilterGpuMode} from 'utils/gpu-filter-utils';
 import {createNewDataEntry, sortDatasetByColumn} from 'utils/dataset-utils';
 import {set, toArray} from 'utils/utils';
 
-import {calculateLayerData, findDefaultLayer} from 'utils/layer-utils/layer-utils';
+import {calculateLayerData, findDefaultLayer} from 'utils/layer-utils';
 
-import {
-  mergeAnimationConfig,
-  mergeFilters,
-  mergeInteractions,
-  mergeLayerBlending,
-  mergeLayers,
-  mergeSplitMaps
-} from './vis-state-merger';
+import {isValidMerger, VIS_STATE_MERGERS} from './vis-state-merger';
 
 import {
   addNewLayersToSplitMap,
@@ -71,6 +70,10 @@ import {
 import {Layer, LayerClasses} from 'layers';
 import {DEFAULT_TEXT_LABEL} from 'layers/layer-factory';
 import {EDITOR_MODES, SORT_ORDER} from 'constants/default-settings';
+import {pick_, merge_} from './composer-helpers';
+import {processFileContent} from 'actions/vis-state-actions';
+
+import KeplerGLSchema from 'schemas';
 
 // type imports
 /** @typedef {import('./vis-state-updaters').Field} Field */
@@ -186,7 +189,8 @@ export const INITIAL_VIS_STATE = {
     //   }
     // ]
   ],
-  //
+  splitMapsToBeMerged: [],
+
   // defaults layer classes
   layerClasses: LayerClasses,
 
@@ -194,7 +198,18 @@ export const INITIAL_VIS_STATE = {
   // time in unix timestamp (milliseconds) (the number of seconds since the Unix Epoch)
   animationConfig: DEFAULT_ANIMATION_CONFIG,
 
-  editor: DEFAULT_EDITOR
+  editor: DEFAULT_EDITOR,
+
+  fileLoading: false,
+  fileLoadingProgress: {},
+
+  loaders: [],
+  loadOptions: {},
+
+  // visStateMergers
+  mergers: VIS_STATE_MERGERS,
+
+  schema: KeplerGLSchema
 };
 
 /**
@@ -925,25 +940,15 @@ export const receiveMapConfigUpdater = (state, {payload: {config = {}, options =
     return state;
   }
 
-  const {
-    filters,
-    layers,
-    interactionConfig,
-    layerBlending,
-    splitMaps,
-    animationConfig
-  } = config.visState;
-
   const {keepExistingConfig} = options;
 
   // reset config if keepExistingConfig is falsy
   let mergedState = !keepExistingConfig ? resetMapConfigUpdater(state) : state;
-  mergedState = mergeLayers(mergedState, layers);
-  mergedState = mergeFilters(mergedState, filters);
-  mergedState = mergeInteractions(mergedState, interactionConfig);
-  mergedState = mergeLayerBlending(mergedState, layerBlending);
-  mergedState = mergeSplitMaps(mergedState, splitMaps);
-  mergedState = mergeAnimationConfig(mergedState, animationConfig);
+  for (const merger of state.mergers) {
+    if (isValidMerger(merger) && config.visState[merger.prop]) {
+      mergedState = merger.merge(mergedState, config.visState[merger.prop]);
+    }
+  }
 
   return mergedState;
 };
@@ -1103,23 +1108,21 @@ export const toggleLayerForMapUpdater = (state, {mapIndex, layerId}) => {
  * @public
  */
 /* eslint-disable max-statements */
+// eslint-disable-next-line complexity
 export const updateVisDataUpdater = (state, action) => {
   // datasets can be a single data entries or an array of multiple data entries
   const {config, options} = action;
-
   const datasets = toArray(action.datasets);
 
   const newDataEntries = datasets.reduce(
-    (accu, {info = {}, data}) => ({
+    (accu, {info = {}, data} = {}) => ({
       ...accu,
       ...(createNewDataEntry({info, data}, state.datasets) || {})
     }),
     {}
   );
 
-  if (!Object.keys(newDataEntries).length) {
-    return state;
-  }
+  const dataEmpty = Object.keys(newDataEntries).length < 1;
 
   // apply config if passed from action
   const previousState = config
@@ -1128,7 +1131,7 @@ export const updateVisDataUpdater = (state, action) => {
       })
     : state;
 
-  const stateWithNewData = {
+  let mergedState = {
     ...previousState,
     datasets: {
       ...previousState.datasets,
@@ -1136,25 +1139,20 @@ export const updateVisDataUpdater = (state, action) => {
     }
   };
 
-  // previously saved config before data loaded
-  const {
-    filterToBeMerged = [],
-    layerToBeMerged = [],
-    interactionToBeMerged = {},
-    splitMapsToBeMerged = []
-  } = stateWithNewData;
+  // merge state with config to be merged
+  for (const merger of mergedState.mergers) {
+    if (isValidMerger(merger) && merger.toMergeProp && mergedState[merger.toMergeProp]) {
+      const toMerge = mergedState[merger.toMergeProp];
+      mergedState[merger.toMergeProp] = INITIAL_VIS_STATE[merger.toMergeProp];
+      mergedState = merger.merge(mergedState, toMerge);
+    }
+  }
 
-  // We need to merge layers before filters because polygon filters requires layers to be loaded
-  let mergedState = mergeLayers(stateWithNewData, layerToBeMerged);
+  let newLayers = !dataEmpty
+    ? mergedState.layers.filter(l => l.config.dataId in newDataEntries)
+    : [];
 
-  mergedState = mergeFilters(mergedState, filterToBeMerged);
-
-  // merge state with saved splitMaps
-  mergedState = mergeSplitMaps(mergedState, splitMapsToBeMerged);
-
-  let newLayers = mergedState.layers.filter(l => l.config.dataId in newDataEntries);
-
-  if (!newLayers.length) {
+  if (!newLayers.length && (options || {}).autoCreateLayers !== false) {
     // no layer merged, find defaults
     const result = addDefaultLayers(mergedState, newDataEntries);
     mergedState = result.state;
@@ -1170,9 +1168,6 @@ export const updateVisDataUpdater = (state, action) => {
     };
   }
 
-  // merge state with saved interactions
-  mergedState = mergeInteractions(mergedState, interactionToBeMerged);
-
   // if no tooltips merged add default tooltips
   Object.keys(newDataEntries).forEach(dataId => {
     const tooltipFields = mergedState.interactionConfig.tooltip.config.fieldsToShow[dataId];
@@ -1181,7 +1176,11 @@ export const updateVisDataUpdater = (state, action) => {
     }
   });
 
-  let updatedState = updateAllLayerDomainData(mergedState, Object.keys(newDataEntries), undefined);
+  let updatedState = updateAllLayerDomainData(
+    mergedState,
+    dataEmpty ? Object.keys(mergedState.datasets) : Object.keys(newDataEntries),
+    undefined
+  );
 
   // register layer animation domain,
   // need to be called after layer data is calculated
@@ -1231,53 +1230,170 @@ function closeSpecificMapAtIndex(state, action) {
  * @public
  */
 export const loadFilesUpdater = (state, action) => {
-  const {files, onFinish = loadFileSuccess} = action;
+  const {files, onFinish = loadFilesSuccess} = action;
   if (!files.length) {
     return state;
   }
 
-  const fileCache = [];
-  return withTask(
-    {
-      ...state,
-      fileLoading: true,
-      fileLoadingProgress: 0
-    },
-    makeLoadFileTask(files.length, files, fileCache, onFinish)
+  const fileLoadingProgress = Array.from(files).reduce(
+    (accu, f, i) => merge_(initialFileLoadingProgress(f, i))(accu),
+    {}
   );
+
+  const fileLoading = {
+    fileCache: [],
+    filesToLoad: files,
+    onFinish
+  };
+
+  const nextState = merge_({fileLoadingProgress, fileLoading})(state);
+
+  return loadNextFileUpdater(nextState);
 };
 
-export function loadNextFileUpdater(state, action) {
-  const {fileCache, filesToLoad, totalCount, onFinish} = action;
-  const fileLoadingProgress = ((totalCount - filesToLoad.length) / totalCount) * 100;
+/**
+ * Sucessfully loaded one file, move on to the next one
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').loadFileStepSuccessUpdater}
+ * @public
+ */
+export function loadFileStepSuccessUpdater(state, action) {
+  if (!state.fileLoading) {
+    return state;
+  }
+  const {fileName, fileCache} = action;
+  const {filesToLoad, onFinish} = state.fileLoading;
+  const stateWithProgress = updateFileLoadingProgressUpdater(state, {
+    fileName,
+    progress: {percent: 1, message: 'Done'}
+  });
+
+  // save processed file to fileCache
+  const stateWithCache = pick_('fileLoading')(merge_({fileCache}))(stateWithProgress);
 
   return withTask(
-    {
-      ...state,
-      fileLoadingProgress
-    },
-    makeLoadFileTask(totalCount, filesToLoad, fileCache, onFinish)
+    stateWithCache,
+    DELAY_TASK(200).map(filesToLoad.length ? loadNextFile : () => onFinish(fileCache))
   );
 }
 
-export function makeLoadFileTask(totalCount, filesToLoad, fileCache, onFinish) {
+// withTask<T>(state: T, task: any): T
+
+/**
+ *
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').loadNextFileUpdater}
+ * @public
+ */
+export function loadNextFileUpdater(state) {
+  if (!state.fileLoading) {
+    return state;
+  }
+  const {filesToLoad} = state.fileLoading;
   const [file, ...remainingFilesToLoad] = filesToLoad;
 
-  return LOAD_FILE_TASK({file, fileCache}).bimap(
-    // success
-    result =>
-      remainingFilesToLoad.length
-        ? loadNextFile({
-            fileCache: result,
-            filesToLoad: remainingFilesToLoad,
-            totalCount,
-            onFinish
-          })
-        : onFinish(result),
-    // error
-    loadFilesErr
+  // save filesToLoad to state
+  const nextState = pick_('fileLoading')(merge_({filesToLoad: remainingFilesToLoad}))(state);
+
+  const stateWithProgress = updateFileLoadingProgressUpdater(nextState, {
+    fileName: file.name,
+    progress: {percent: 0, message: 'loading...'}
+  });
+
+  const {loaders, loadOptions} = state;
+  return withTask(
+    stateWithProgress,
+    makeLoadFileTask(file, nextState.fileLoading.fileCache, loaders, loadOptions)
   );
 }
+
+export function makeLoadFileTask(file, fileCache, loaders = [], loadOptions = {}) {
+  return LOAD_FILE_TASK({file, fileCache, loaders, loadOptions}).bimap(
+    // prettier ignore
+    // success
+    gen =>
+      nextFileBatch({
+        gen,
+        fileName: file.name,
+        onFinish: result =>
+          processFileContent({
+            content: result,
+            fileCache
+          })
+      }),
+
+    // error
+    err => loadFilesErr(file.name, err)
+  );
+}
+
+/**
+ *
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').processFileContentUpdater}
+ * @public
+ */
+export function processFileContentUpdater(state, action) {
+  const {content, fileCache} = action.payload;
+
+  const stateWithProgress = updateFileLoadingProgressUpdater(state, {
+    fileName: content.fileName,
+    progress: {percent: 1, message: 'processing...'}
+  });
+
+  return withTask(
+    stateWithProgress,
+    PROCESS_FILE_DATA({content, fileCache}).bimap(
+      result => loadFileStepSuccess({fileName: content.fileName, fileCache: result}),
+      err => loadFilesErr(content.fileName, err)
+    )
+  );
+}
+
+export function parseProgress(prevProgress = {}, progress) {
+  // This happens when receiving query metadata or other cases we don't
+  // have an update for the user.
+  if (!progress || !progress.percent) {
+    return {};
+  }
+
+  return {
+    percent: progress.percent
+  };
+}
+
+/**
+ * gets called with payload = AsyncGenerator<???>
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').nextFileBatchUpdater}
+ * @public
+ */
+export const nextFileBatchUpdater = (
+  state,
+  {payload: {gen, fileName, progress, accumulated, onFinish}}
+) => {
+  const stateWithProgress = updateFileLoadingProgressUpdater(state, {
+    fileName,
+    progress: parseProgress(state.fileLoadingProgress[fileName], progress)
+  });
+  return withTask(
+    stateWithProgress,
+    UNWRAP_TASK(gen.next()).bimap(
+      ({value, done}) => {
+        return done
+          ? onFinish(accumulated)
+          : nextFileBatch({
+              gen,
+              fileName,
+              progress: value.progress,
+              accumulated: value,
+              onFinish
+            });
+      },
+      err => loadFilesErr(fileName, err)
+    )
+  );
+};
 
 /**
  * Trigger loading file error
@@ -1285,11 +1401,25 @@ export function makeLoadFileTask(totalCount, filesToLoad, fileCache, onFinish) {
  * @type {typeof import('./vis-state-updaters').loadFilesErrUpdater}
  * @public
  */
-export const loadFilesErrUpdater = (state, {error}) => ({
-  ...state,
-  fileLoading: false,
-  fileLoadingErr: error
-});
+export const loadFilesErrUpdater = (state, {error, fileName}) => {
+  // update ui with error message
+  Console.warn(error);
+  if (!state.fileLoading) {
+    return state;
+  }
+  const {filesToLoad, onFinish, fileCache} = state.fileLoading;
+
+  const nextState = updateFileLoadingProgressUpdater(state, {
+    fileName,
+    progress: {error}
+  });
+
+  // kick off next file or finish
+  return withTask(
+    nextState,
+    DELAY_TASK(200).map(filesToLoad.length ? loadNextFile : () => onFinish(fileCache))
+  );
+};
 
 /**
  * When select dataset for export, apply cpu filter to selected dataset
@@ -1322,11 +1452,12 @@ export const setMapInfoUpdater = (state, action) => ({
  * @type {typeof import('./vis-state-updaters').addDefaultLayers}
  */
 export function addDefaultLayers(state, datasets) {
-  const defaultLayers = Object.values(datasets).reduce(
-    // @ts-ignore
-    (accu, dataset) => [...accu, ...(findDefaultLayer(dataset, state.layerClasses) || [])],
-    []
-  );
+  /** @type {Layer[]} */
+  const empty = [];
+  const defaultLayers = Object.values(datasets).reduce((accu, dataset) => {
+    const foundLayers = findDefaultLayer(dataset, state.layerClasses);
+    return foundLayers && foundLayers.length ? accu.concat(foundLayers) : accu;
+  }, empty);
 
   return {
     state: {
@@ -1358,6 +1489,22 @@ export function addDefaultTooltips(state, dataset) {
   return set(['interactionConfig', 'tooltip', 'config', 'fieldsToShow'], merged, state);
 }
 
+export function initialFileLoadingProgress(file, index) {
+  const fileName = file.name || `Untitled File ${index}`;
+  return {
+    [fileName]: {
+      // percent of current file
+      percent: 0,
+      message: '',
+      fileName,
+      error: null
+    }
+  };
+}
+
+export function updateFileLoadingProgressUpdater(state, {fileName, progress}) {
+  return pick_('fileLoadingProgress')(pick_(fileName)(merge_(progress)))(state);
+}
 /**
  * Helper function to update layer domains for an array of datasets
  * @type {typeof import('./vis-state-updaters').updateAllLayerDomainData}

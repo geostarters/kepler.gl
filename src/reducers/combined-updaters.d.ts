@@ -3,9 +3,9 @@ import {MapState} from './map-state-updaters';
 import {UiState} from './ui-state-updaters';
 import {MapStyle} from './map-style-updaters';
 import {ProviderState} from './provider-state-updaters';
-import {AddDataToMaoPayload} from 'actions/actions';
+import {AddDataToMapPayload} from 'actions/actions';
 import {FileCacheItem} from 'processors/file-handler';
-import {LoadFileSuccessUpdaterAction} from 'actions/vis-state-actions';
+import {loadFilesSuccessUpdaterAction} from 'actions/vis-state-actions';
 
 export type KeplerGlState = {
   visState: VisState;
@@ -17,10 +17,10 @@ export type KeplerGlState = {
 
 export function addDataToMapUpdater(
   state: KeplerGlState,
-  action: {payload: AddDataToMaoPayload}
+  action: {payload: AddDataToMapPayload}
 ): KeplerGlState;
 
-export function loadFileSuccessUpdater(
+export function loadFilesSuccessUpdater(
   state: KeplerGlState,
-  action: LoadFileSuccessUpdaterAction
+  action: loadFilesSuccessUpdaterAction
 ): KeplerGlState;

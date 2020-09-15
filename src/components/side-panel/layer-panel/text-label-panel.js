@@ -20,7 +20,7 @@
 
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 import {
   Button,
@@ -31,19 +31,18 @@ import {
 } from 'components/common/styled-components';
 import {Add} from 'components/common/icons';
 import ColorSelector from './color-selector';
-import FieldSelector from 'components/common/field-selector';
 import ItemSelector from 'components/common/item-selector/item-selector';
-import LayerConfigGroup, {
+import LayerConfigGroupFactory, {
   ConfigGroupCollapsibleContent,
   ConfigGroupCollapsibleHeader
 } from './layer-config-group';
 import RangeSliderFactory from 'components/common/range-slider';
 
 import {LAYER_TEXT_CONFIGS} from 'layers/layer-factory';
+import FieldSelectorFactory from '../../common/field-selector';
 
-TextLabelPanelFactory.deps = [RangeSliderFactory];
-
-export default function TextLabelPanelFactory(RangeSlider) {
+TextLabelPanelFactory.deps = [RangeSliderFactory, LayerConfigGroupFactory, FieldSelectorFactory];
+function TextLabelPanelFactory(RangeSlider, LayerConfigGroup, FieldSelector) {
   class TextLabelPanel extends Component {
     static propTypes = {
       fields: PropTypes.arrayOf(PropTypes.object),
@@ -143,3 +142,5 @@ export default function TextLabelPanelFactory(RangeSlider) {
 
   return TextLabelPanel;
 }
+
+export default TextLabelPanelFactory;

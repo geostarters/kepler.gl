@@ -5,9 +5,11 @@ import {
   SplitMap,
   AnimationConfig,
   VisState,
-  RGBColor, 
+  RGBColor,
   Merge
 } from 'reducers';
+import {Schema} from './schema';
+
 import {LayerTextLabel} from 'layers/layer-factory';
 
 export type SavedFilter = {
@@ -121,6 +123,7 @@ export type SavedMapStyle = {
   mapStyles: SavedCustomMapStyle;
 };
 
+/** Schema for v1 saved configuration */
 export type SavedConfigV1 = {
   version: 'v1';
   config: {
@@ -130,7 +133,9 @@ export type SavedConfigV1 = {
   };
 };
 
+/** Schema for a parsed configuration ("normalized" across versions) */
 export type ParsedConfig = {
+  version: string;
   visState?: {
     layers?: ParsedLayer[];
     filters?: ParsedFilter[];
@@ -203,7 +208,7 @@ export class KeplerGLSchema {
   validateVersion(version: any): string | null;
   hasDataChanged(state: any): boolean;
 }
-
+export const reducerSchema: {[key: string]: Schema};
 const KeplerGLSchemaManager: KeplerGLSchema;
 
 export default KeplerGLSchemaManager;

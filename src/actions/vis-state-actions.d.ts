@@ -19,13 +19,16 @@
 // THE SOFTWARE.
 
 // vis-state-reducer
-import ActionTypes from 'constants/action-types';
-import {ProtoDataset, AddDataToMaoPayload} from '../actions/actions';
+import ActionTypes, {ActionType} from 'constants/action-types';
+import {ProtoDataset, AddDataToMapPayload} from '../actions/actions';
 import {ParsedConfig} from '../schemas';
 import {FileCacheItem} from '../processors/file-handler';
 import {Layer, LayerConfig, LayerVisConfig} from 'layers';
 import {Feature, InteractionConfig} from 'reducers/vis-state-updaters';
 import {ValueOf, Merge} from '../reducers/types';
+// TODO - import LoaderObject type from @loaders.gl/core when supported
+// TODO - import LoadOptions type from @loaders.gl/core when supported
+import {LoaderObject} from '@loaders.gl/loader-utils';
 
 export type LayerConfigChangeUpdaterAction = {
   oldLayer: Layer;
@@ -199,21 +202,21 @@ export function copyTableColumn(
   column: string
 ): Merge<CopyTableColumnUpdaterAction, {type: ActionTypes.COPY_TABLE_COLUMN}>;
 
-export type AddDaataToMapOUpdaterptions = {
+export type AddDataToMapUpdaterOptions = {
   centrMap?: boolean;
   readOnly?: boolean;
   keepExistingConfig?: boolean;
 };
 
 export type UpdateVisDataUpdaterAction = {
-  datasets: AddDataToMaoPayload['datasets'];
-  options: AddDataToMaoPayload['options'];
-  config: AddDataToMaoPayload['config'];
-} & AddDataToMaoPayload;
+  datasets: AddDataToMapPayload['datasets'];
+  options: AddDataToMapPayload['options'];
+  config: AddDataToMapPayload['config'];
+} & AddDataToMapPayload;
 export function updateVisData(
-  datasets: AddDataToMaoPayload['datasets'],
-  options: AddDataToMaoPayload['options'],
-  config: AddDataToMaoPayload['config']
+  datasets: AddDataToMapPayload['datasets'],
+  options: AddDataToMapPayload['options'],
+  config: AddDataToMapPayload['config']
 ): Merge<UpdateVisDataUpdaterAction, {type: ActionTypes.UPDATE_VIS_DATA}>;
 
 export type ToggleFilterAnimationUpdaterAction = {
@@ -313,11 +316,11 @@ export function setMapInfo(
 ): Merge<SetMapInfoUpdaterAction, {type: ActionTypes.SET_MAP_INFO}>;
 
 export type LoadFilesUpdaterAction = {
-  files: FileList;
+  files: File[];
   onFinish?(result: any): any;
 };
 export function loadFiles(
-  files: FileList,
+  files: File[],
   onFinish?: (result: any) => any
 ): Merge<LoadFilesUpdaterAction, {type: ActionTypes.LOAD_FILES}>;
 
@@ -371,29 +374,58 @@ export function toggleEditorVisibility(): Merge<
   {type: ActionTypes.TOGGLE_EDITOR_VISIBILITY}
 >;
 
-export type LoadNextFileUpdaterAction = {
-  fileCache: FileCacheItem[];
-  filesToLoad: FileList[];
-  totalCount: number;
-  onFinish: function;
-};
-export function loadNextFile(payload: {
-  fileCache: FileCacheItem[];
-  filesToLoad: FileList[];
-  totalCount: number;
-  onFinish: function;
-}): Merge<LoadNextFileUpdaterAction, {type: ActionTypes.LOAD_NEXT_FILE}>;
+export function loadNextFile(): Merge<{type: ActionTypes.LOAD_NEXT_FILE}>;
 
-export type LoadFileSuccessUpdaterAction = {
+export type loadFilesSuccessUpdaterAction = {
   result: FileCacheItem[];
 };
-export function loadFileSuccess(
+export function loadFilesSuccess(
   result: FileCacheItem[]
-): Merge<LoadFileSuccessUpdaterAction, {type: ActionTypes.LOAD_FILES_SUCCESS}>;
+): Merge<loadFilesSuccessUpdaterAction, {type: ActionTypes.LOAD_FILES_SUCCESS}>;
 
 export type loadFilesErrUpdaterAction = {
+  fileName: string;
   error: any;
 };
 export function loadFilesErr(
+  fileName: string,
   error: any
 ): Merge<loadFilesErrUpdaterAction, {type: ActionTypes.LOAD_FILES_ERR}>;
+
+export type LoadFileStepSuccessAction = {
+  fileName: string;
+  fileCache: FileCacheItem[];
+};
+export function loadFileStepSuccess(payload: {
+  fileName: string;
+  fileCache: FileCacheItem[];
+}): Merge<LoadFileStepSuccessAction, {type: ActionTypes.LOAD_FILE_STEP_SUCCESS}>;
+
+type FileContent = {
+  fileName: string;
+  header: string[];
+  data: any;
+};
+export type NextFileBatchUpdaterAction = {
+  payload: {
+    gen: AsyncGenerator<FileContent>;
+    fileName: string;
+    progress?: any;
+    accumulated?: any;
+    onFinish: (result: any) => any;
+  };
+};
+export function nextFileBatch(
+  payload: NextFileBatchAction['payload']
+): Merge<NextFileBatchUpdaterAction, {type: ActionTypes.NEXT_FILE_BATCH}>;
+
+export type ProcessFileContentUpdaterAction = {
+  payload: {
+    content: FileContent;
+    fileCache: FileCacheItem[];
+  };
+};
+
+export function processFileContent(
+  payload: ProcessFileContentUpdaterAction['payload']
+): Merge<ProcessFileContentUpdaterAction, {type: ActionTypes.PROCESS_FILE_CONTENT}>;

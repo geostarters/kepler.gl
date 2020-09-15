@@ -23,6 +23,7 @@ import assert from 'assert';
 import {ALL_FIELD_TYPES} from 'constants/default-settings';
 import {TOOLTIP_FORMATS, TOOLTIP_FORMAT_TYPES, TOOLTIP_KEY} from 'constants/tooltip';
 import {format as d3Format} from 'd3-format';
+import {bisectLeft} from 'd3-array';
 
 const MAX_LATITUDE = 90;
 const MIN_LATITUDE = -90;
@@ -145,6 +146,13 @@ export function notNullorUndefined(d) {
 }
 
 /**
+ * Whether d is a number, this filtered out NaN as well
+ * @type {typeof import('./data-utils').notNullorUndefined}
+ */
+export function isNumber(d) {
+  return Number.isFinite(d);
+}
+/**
  * whether null or undefined
  */
 export function isPlainObject(obj) {
@@ -205,14 +213,49 @@ export function getRoundingDecimalFromStep(step) {
 }
 
 /**
+ * Use in slider, given a number and an array of numbers, return the nears number from the array
+ * @type {typeof import('./data-utils').snapToMarks}
+ * @param value
+ * @param marks
+ */
+export function snapToMarks(value, marks) {
+  // always use bin x0
+  const i = bisectLeft(marks, value);
+  if (i === 0) {
+    return marks[i];
+  } else if (i === marks.length) {
+    return marks[i - 1];
+  }
+  const idx = marks[i] - value < value - marks[i - 1] ? i : i - 1;
+  return marks[idx];
+}
+
+/**
+ * If marks is provided, snap to marks, if not normalize to step
+ * @type {typeof import('./data-utils').normalizeSliderValue}
+ * @param val
+ * @param minValue
+ * @param step
+ * @param marks
+ */
+export function normalizeSliderValue(val, minValue, step, marks) {
+  if (marks && marks.length) {
+    return snapToMarks(val, marks);
+  }
+
+  return roundValToStep(minValue, step, val);
+}
+
+/**
  * round the value to step for the slider
- * @param {number} minValue
- * @param {number} step
- * @param {number} val
- * @returns {number} - rounded number
+ * @type {typeof import('./data-utils').roundValToStep}
+ * @param minValue
+ * @param step
+ * @param val
+ * @returns - rounded number
  */
 export function roundValToStep(minValue, step, val) {
-  if (isNaN(step)) {
+  if (!isNumber(step) || !isNumber(minValue)) {
     return val;
   }
 
@@ -238,15 +281,20 @@ export function roundValToStep(minValue, step, val) {
   return Number(rounded);
 }
 
-const identity = d => d;
+/**
+ * Get the value format based on field and format options
+ * Used in render tooltip value
+ * @type {typeof import('./data-utils').defaultFormatter}
+ */
+export const defaultFormatter = v => (notNullorUndefined(v) ? String(v) : '');
 
 export const FIELD_DISPLAY_FORMAT = {
-  [ALL_FIELD_TYPES.string]: identity,
-  [ALL_FIELD_TYPES.timestamp]: identity,
-  [ALL_FIELD_TYPES.integer]: identity,
-  [ALL_FIELD_TYPES.real]: identity,
-  [ALL_FIELD_TYPES.boolean]: d => String(d),
-  [ALL_FIELD_TYPES.date]: identity,
+  [ALL_FIELD_TYPES.string]: defaultFormatter,
+  [ALL_FIELD_TYPES.timestamp]: defaultFormatter,
+  [ALL_FIELD_TYPES.integer]: defaultFormatter,
+  [ALL_FIELD_TYPES.real]: defaultFormatter,
+  [ALL_FIELD_TYPES.boolean]: defaultFormatter,
+  [ALL_FIELD_TYPES.date]: defaultFormatter,
   [ALL_FIELD_TYPES.geojson]: d =>
     typeof d === 'string'
       ? d
@@ -273,27 +321,26 @@ const arrayMoveMutate = (array, from, to) => {
   array.splice(to < 0 ? array.length + to : to, 0, array.splice(from, 1)[0]);
 };
 
+/**
+ *
+ * @param {*} array
+ * @param {*} from
+ * @param {*} to
+ */
 export const arrayMove = (array, from, to) => {
   array = array.slice();
   arrayMoveMutate(array, from, to);
   return array;
 };
 
-export function findFirstNoneEmpty(data, count = 1, getValue = identity) {
-  let c = 0;
-  const found = [];
-  while (c < count && c < data.length) {
-    const value = getValue(data[c]);
-    if (notNullorUndefined(value)) {
-      found.push(value);
-    }
-    c++;
-  }
-  return found;
-}
-
+/**
+ * Get the value format based on field and format options
+ * Used in render tooltip value
+ * @type {typeof import('./data-utils').getFormatter}
+ * @param format
+ * @param field
+ */
 export function getFormatter(format, field) {
-  const defaultFormatter = v => v;
   if (!format) {
     return defaultFormatter;
   }
@@ -310,7 +357,7 @@ export function getFormatter(format, field) {
 
 export function applyDefaultFormat(tooltipFormat) {
   if (!tooltipFormat || !tooltipFormat.format) {
-    return v => v;
+    return defaultFormatter;
   }
 
   switch (tooltipFormat.type) {
@@ -321,11 +368,23 @@ export function applyDefaultFormat(tooltipFormat) {
       return v => moment.utc(v).format(tooltipFormat.format);
     case TOOLTIP_FORMAT_TYPES.PERCENTAGE:
       return v => `${d3Format(TOOLTIP_FORMATS.DECIMAL_DECIMAL_FIXED_2.format)(v)}%`;
+    case TOOLTIP_FORMAT_TYPES.BOOLEAN:
+      return getBooleanFormatter(tooltipFormat.format);
     default:
-      return v => v;
+      return defaultFormatter;
   }
 }
 
+export function getBooleanFormatter(format) {
+  switch (format) {
+    case '01':
+      return v => (v ? '1' : '0');
+    case 'yn':
+      return v => (v ? 'yes' : 'no');
+    default:
+      return defaultFormatter;
+  }
+}
 // Allow user to specify custom tooltip format via config
 export function applyCustomFormat(format, field) {
   switch (field.type) {

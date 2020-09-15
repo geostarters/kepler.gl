@@ -21,15 +21,15 @@
 import React from 'react';
 import styled from 'styled-components';
 import DatasetLabel from 'components/common/dataset-label';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const StyledMsg = styled.div`
   margin-top: 24px;
 `;
 
-export const DeleteDatasetModal = ({dataset = {}, layers = []}) => {
+export const DeleteDatasetModal = ({dataset, layers = []}) => {
   // retrieve only layers related to the current dataset
-  const currDatasetLayers = layers.filter(layer => layer.config.dataId === dataset.id);
+  const currDatasetLayers = layers.filter(layer => layer.config.dataId === (dataset && dataset.id));
 
   return (
     <div className="delete-dataset-modal">

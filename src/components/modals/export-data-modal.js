@@ -27,9 +27,11 @@ import {
   StyledExportSection,
   StyledFilteredOption,
   StyledModalContent,
-  StyledType
+  StyledType,
+  CheckMark
 } from 'components/common/styled-components';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const propTypes = {
   datasets: PropTypes.object.isRequired,
@@ -131,6 +133,7 @@ const ExportDataModalFactory = () => {
                     onClick={() => op.available && onChangeExportDataType(op.id)}
                   >
                     <FileType ext={op.label} height="80px" fontSize="11px" />
+                    {dataType === op.id && <CheckMark />}
                   </StyledType>
                 ))}
               </div>
@@ -156,6 +159,7 @@ const ExportDataModalFactory = () => {
                   <div className="filter-option-subtitle">
                     {getDataRowCount(datasets, selectedDataset, false, intl)}
                   </div>
+                  {!filtered && <CheckMark />}
                 </StyledFilteredOption>
                 <StyledFilteredOption
                   className="filtered-option"
@@ -168,6 +172,7 @@ const ExportDataModalFactory = () => {
                   <div className="filter-option-subtitle">
                     {getDataRowCount(datasets, selectedDataset, true, intl)}
                   </div>
+                  {filtered && <CheckMark />}
                 </StyledFilteredOption>
               </div>
             </StyledExportSection>

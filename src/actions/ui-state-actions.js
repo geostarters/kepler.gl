@@ -117,7 +117,7 @@ export const setExportImageSetting = createAction(
 );
 
 /**
- * Set `exportImage.exporting` to true
+ * Start exporting image flow
  * @memberof uiStateActions
  * @type {typeof import('./ui-state-actions').startExportingImage}
  * @public

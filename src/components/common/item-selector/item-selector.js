@@ -32,12 +32,15 @@ import {Delete} from 'components/common/icons';
 import DropdownList, {ListItem} from './dropdown-list';
 
 import {toArray} from 'utils/utils';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const StyledDropdownSelect = styled.div.attrs({
   className: 'item-selector__dropdown'
 })`
   ${props => (props.inputTheme === 'secondary' ? props.theme.secondaryInput : props.theme.input)};
+
+  height: ${props => props.theme.dropdownSelectHeight}px;
 
   .list__item__anchor {
     ${props => props.theme.dropdownListAnchor};
@@ -62,8 +65,10 @@ const DropdownWrapper = styled.div`
   z-index: ${props => props.theme.dropdownWrapperZ};
   position: absolute;
   bottom: ${props => (props.placement === 'top' ? props.theme.inputBoxHeight : 'auto')};
-  margin-top: ${props => (props.placement === 'bottom' ? '4px' : 'auto')};
-  margin-bottom: ${props => (props.placement === 'top' ? '4px' : 'auto')};
+  margin-top: ${props =>
+    props.placement === 'bottom' ? `${props.theme.dropdownWapperMargin}px` : 'auto'};
+  margin-bottom: ${props =>
+    props.placement === 'top' ? `${props.theme.dropdownWapperMargin}px` : 'auto'};
 `;
 
 class ItemSelector extends Component {
@@ -172,7 +177,6 @@ class ItemSelector extends Component {
 
     if (this.props.multiSelect) {
       const items = uniqBy(previousSelected.concat(toArray(item)), getValue);
-
       this.props.onChange(items);
     } else {
       this.props.onChange(getValue(item));

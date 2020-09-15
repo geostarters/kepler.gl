@@ -23,7 +23,7 @@ import PropTypes from 'prop-types';
 
 import styled from 'styled-components';
 import Delete from '../icons/delete';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const propTypes = {
   // required properties
@@ -41,7 +41,7 @@ const propTypes = {
 };
 
 export const ChickletButton = styled.div`
-  background: ${props => props.theme.panelActiveBg};
+  background: ${props => props.theme.chickletBgd};
   border-radius: 1px;
   color: ${props => props.theme.textColor};
   font-size: 11px;

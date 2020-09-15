@@ -3,6 +3,9 @@ import {AddDataToMapOptions, ReceiveMapConfigPayload} from '../actions/actions';
 import {ParsedConfig} from '../schemas';
 import * as VisStateActions from 'actions/vis-state-actions';
 import ActionTypes from 'constants/action-types';
+import {LoaderObject} from '@loaders.gl/loader-utils';
+import {VisStateMergers} from './vis-state-merger';
+import KeplerGLSchema from 'schemas';
 
 export type HistogramBin = {
   x0: number | undefined;
@@ -150,7 +153,7 @@ export type FieldPair = {
     [key: string]: {
       fieldIdx: number;
       value: string;
-    }
+    };
   };
   suffix: string[];
 };
@@ -222,21 +225,24 @@ export type AnimationConfig = {
   speed: number;
 };
 
-type BaseInteraction = {
+export type BaseInteraction = {
   id: string;
   label: string;
   enabled: boolean;
   iconComponent: any;
 };
-type TooltipField = {
+export type TooltipField = {
   name: string;
   format: string | null;
-}
+};
+export type CompareType = string | null;
 export type Tooltip = BaseInteraction & {
   config: {
     fieldsToShow: {
       [key: string]: TooltipField[];
     };
+    compareMode: boolean;
+    compareType: CompareType;
   };
 };
 export type Geocoder = BaseInteraction & {
@@ -260,6 +266,20 @@ export type MapInfo = {
   title: string;
   description: string;
 };
+export type FileLoading = {
+  filesToLoad: FileList;
+  onFinish: (payload: any) => any;
+  fileCache: any[];
+};
+export type FileLoadingProgress = {
+  [key: string]: {
+    percent: number;
+    message: string;
+    fileName: string;
+    error: any;
+  };
+};
+
 export type VisState = {
   mapInfo: MapInfo;
   layers: Layer[];
@@ -282,10 +302,14 @@ export type VisState = {
   animationConfig: AnimationConfig;
   editor: Editor;
   splitMaps: SplitMap[];
-  splitMapsToBeMerged?: SplitMap[];
+  splitMapsToBeMerged: SplitMap[];
+  fileLoading: FileLoading | false;
+  fileLoadingProgress: FileLoadingProgress;
+  loaders: LoaderObject[];
+  loadOptions: object;
   initialState?: Partial<VisState>;
-  fileLoading?: boolean;
-  fileLoadingErr?: any;
+  mergers: VisStateMergers;
+  schema: KeplerGLSchema
 };
 
 export function addDefaultLayers(
@@ -444,16 +468,27 @@ export function loadFilesUpdater(
   action: VisStateActions.LoadFilesUpdaterAction
 ): VisState;
 export function loadNextFileUpdater(
-  state: VisState,
-  action: VisStateActions.LoadNextFileUpdaterAction
+  state: VisState
 ): VisState;
-export function loadFileSuccessUpdater(
+export function loadFilesSuccessUpdater(
   state: VisState,
-  action: VisStateActions.LoadFileSuccessUpdaterAction
+  action: VisStateActions.loadFilesSuccessUpdaterAction
 ): VisState;
 export function loadFilesErrUpdater(
   state: VisState,
   action: VisStateActions.LoadFilesErrUpdaterAction
+): VisState;
+export function loadFileStepSuccessUpdater(
+  state: VisState,
+  action: VisStateActions.LoadFileStepSuccessAction
+): VisState;
+export function nextFileBatchUpdater(
+  state: VisState,
+  action: VisStateActions.NextFileBatchUpdaterAction
+): VisState;
+export function processFileContentUpdater(
+  state: VisState,
+  action: VisStateActions.ProcessFileContentUpdaterAction
 ): VisState;
 export function setFeaturesUpdater(
   state: VisState,

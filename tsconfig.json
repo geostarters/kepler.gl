@@ -14,14 +14,23 @@
     "outDir": "build/dist",
     "sourceMap": true,
     "strictNullChecks": true,
-    "suppressImplicitAnyIndexErrors": true,
+    "suppressImplicitAnyIndexErrors": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "strict": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": "./src"
+    "baseUrl": "./src",
+    "paths": {
+      "*": ["*"]
+    }
+  },
+  "paths": {
+    "actions": "src/actions",
+    "actions/*": "src/actions/*",
+    "reducers": "src/reducers",
+    "reducers/*": "src/reducers/*"
   },
   "include": [
     "src/actions",
@@ -30,9 +39,13 @@
     "src/reducers",
     "src/schemas",
     "src/utils",
+    "src/components/common/file-uploader",
+    "src/components/common/progress-bar.js",
+    "src/components/modals/load-data-modal.js",
+    "src/components/modal-container.js",
+    "src/components/kepler.gl"
 
     // TODO: add types
-    // "src/components",
     // "src/constants",
     // "src/deckgl-layers",
     // "src/layers"

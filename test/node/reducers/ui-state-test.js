@@ -29,9 +29,11 @@ import {
   setExportSelectedDataset,
   setExportDataType,
   setExportFiltered,
-  addNotification
+  addNotification,
+  startExportingImage
 } from 'actions/ui-state-actions';
 import {loadFiles, loadFilesErr} from 'actions/vis-state-actions';
+import {keplerGlInit} from 'actions/actions';
 import reducer, {uiStateReducerFactory} from 'reducers/ui-state';
 import {INITIAL_UI_STATE} from 'reducers/ui-state-updaters';
 import {
@@ -47,6 +49,23 @@ test('#uiStateReducer', t => {
     reducer(undefined, {}),
     {...INITIAL_UI_STATE, initialState: {}},
     'should return the initial state'
+  );
+  t.end();
+});
+
+test('#uiStateReducer -> INIT', t => {
+  const uiStateReducer = uiStateReducerFactory();
+
+  const newState = reducer(
+    uiStateReducer(undefined, {}),
+    keplerGlInit({
+      initialUiState: {readOnly: true}
+    })
+  );
+  t.deepEqual(
+    newState,
+    {...INITIAL_UI_STATE, readOnly: true, initialState: {}},
+    'should apply initialUiState'
   );
   t.end();
 });
@@ -122,6 +141,22 @@ test('#uiStateReducer -> SET_EXPORT_IMAGE_SETTING', t => {
   };
 
   t.deepEqual(newReducer, expectedState, 'should set the resolution to TWO_X');
+
+  t.end();
+});
+
+test('#uiStateReducer -> START_EXPORTING_IMAGE', t => {
+  const newReducer = reducer(INITIAL_UI_STATE, startExportingImage());
+
+  const expectedState = {
+    ...INITIAL_UI_STATE,
+    exportImage: {
+      ...INITIAL_UI_STATE.exportImage,
+      exporting: true
+    }
+  };
+
+  t.deepEqual(newReducer, expectedState, 'should set exporting to true and modal to export image');
 
   t.end();
 });
@@ -254,7 +289,7 @@ test('#uiStateReducer -> LOAD_FILES_ERR', t => {
   const newState = reducer(INITIAL_UI_STATE, loadFiles());
   t.equal(newState.loadFiles.fileLoading, true, 'should set fileLoading to true');
 
-  const newState1 = reducer(newState, loadFilesErr(new Error('this is an error')));
+  const newState1 = reducer(newState, loadFilesErr('file.csv', new Error('this is an error')));
   const expectedId = newState1.notifications.length ? newState1.notifications[0].id : 'error';
   t.equal(
     newState1.loadFiles.fileLoading,

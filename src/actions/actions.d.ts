@@ -23,6 +23,7 @@ import {ParsedConfig} from '../schemas';
 import {RGBColor} from 'reducers/types';
 import {Bounds} from 'reducers/map-state-updaters';
 import {MapInfo} from 'reducers/vis-state-updaters';
+import {UiState} from 'reducers/ui-state-updaters';
 
 /**
  * Input dataest parsed to addDataToMap
@@ -51,18 +52,23 @@ export type AddDataToMapOptions = {
   centerMap?: boolean;
   readOnly?: boolean;
   keepExistingConfig?: boolean;
+  autoCreateLayers?: boolean;
 };
 
-export type AddDataToMaoPayload = {
-  datasets: ProtoDataset[];
+export type AddDataToMapPayload = {
+  // TODO/ib - internally the code calls `toArray` a couple of layers deep
+  // so this function can actually accept both an array and an object
+  // recommend dropping such "sloppy typing" and enforcing array type
+  // as the field is called `datasets`
+  datasets: ProtoDataset[] | ProtoDataset;
   options?: AddDataToMapOptions;
   config?: ParsedConfig;
   info?: Partial<MapInfo>
 };
 
 export function addDataToMap(
-  data: AddDataToMaoPayload
-): {type: ActionTypes.ADD_DATA_TO_MAP; payload: AddDataToMaoPayload};
+  data: AddDataToMapPayload
+): {type: ActionTypes.ADD_DATA_TO_MAP; payload: AddDataToMapPayload};
 
 export function resetMapConfig(): {type: ActionTypes.RESET_MAP_CONFIG};
 
@@ -84,13 +90,10 @@ export type KeplerGlInitPayload = {
   mapboxApiAccessToken?: string;
   mapboxApiUrl?: string;
   mapStylesReplaceDefault?: boolean;
+  initialUiState?: Partial<UiState>;
 };
 
-export function keplerGlInit(options?: {
-  mapboxApiAccessToken?: string;
-  mapboxApiUrl?: string;
-  mapStylesReplaceDefault?: boolean;
-}): {
+export function keplerGlInit(options?: KeplerGlInitPayload): {
   type: ActionTypes.INIT;
   payload: KeplerGlInitPayload;
 };

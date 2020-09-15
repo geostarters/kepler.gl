@@ -24,3 +24,17 @@ export function mergeSplitMaps(
 ): VisState;
 
 export function mergeInteractionTooltipConfig(state: VisState);
+
+export function isValidMerger(arg: any): boolean;
+export type Merger = {
+  merge: (state: VisState, config: any) => VisState, 
+  prop: string, 
+  toMergeProp?: string 
+};
+
+export function validateSavedVisualChannels(fields, newLayer, savedLayer);
+export function validateLayerWithData({fields, id: dataId}, savedLayer, layerClasses);
+
+export type VisStateMergers = Merger[];
+
+export const VIS_STATE_MERGERS: VisStateMergers;

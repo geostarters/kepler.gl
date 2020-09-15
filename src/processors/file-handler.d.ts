@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {ProtoDataset, AddDataToMaoPayload} from 'actions/actions';
+import {ProtoDataset, AddDataToMapPayload} from 'actions/actions';
 
 export type FileCacheItem = {
   data: any;
@@ -28,10 +28,18 @@ export type FileCacheItem = {
   };
 };
 
-export function readFile(payload: {
+export function readFileInBatches(payload: {
   file: File;
   fileCache: FileCacheItem[];
+  loaders: LoaderObject;
+  loadOptions: object;
+}): AsyncGenerator;
+
+export function processFileData(payload: {
+  content: any;
+  fileCache: FileCacheItem[];
 }): Promise<FileCacheItem[]>;
-export function getFileHandler(fileBlob: File): {handler: function; format: string};
-export function filesToDataPayload(fileCache: FileCacheItem[]): AddDataToMaoPayload[];
-export function getFileType(filename: string): 'csv' | 'json' | 'other';
+
+export function filesToDataPayload(fileCache: FileCacheItem[]): AddDataToMapPayload[];
+
+export function readBatch(asyncIterator, fileName): AsyncIterable<any>;

@@ -91,16 +91,27 @@ export function removeNotification(
 
 /** SET_EXPORT_IMAGE_SETTING */
 export type SetExportImageSettingUpdaterAction = {
-  payload: {ratio?: string; resolution?: string; legend?: string};
+  payload: {
+    ratio?: string;
+    resolution?: string;
+    legend?: string;
+    center?: boolean;
+    exporting?: boolean;
+    processing?: boolean;
+  };
 };
-export function setExportImageSetting(newSetting: {
-  ratio?: string;
-  resolution?: string;
-  legend?: string;
-}): Merge<SetExportImageSettingUpdaterAction, {type: ActionTypes.SET_EXPORT_IMAGE_SETTING}>;
+export function setExportImageSetting(newSetting:
+  SetExportImageSettingUpdaterAction['payload']
+): Merge<SetExportImageSettingUpdaterAction, {type: ActionTypes.SET_EXPORT_IMAGE_SETTING}>;
 
 /** START_EXPORTING_IMAGE */
-export function startExportingImage(): {type: ActionTypes.START_EXPORTING_IMAGE};
+export function startExportingImage(options?: {
+  ratio?: string;
+  resolution?: string;
+  legend?: string,
+  center?: boolean
+}): Merge<SetExportImageSettingUpdaterAction, {type: ActionTypes.START_EXPORT_IMAGE}>;
+
 
 /** SET_EXPORT_IMAGE_DATA_URI */
 export type SetExportImageDataUriUpdaterAction = {
