@@ -27,6 +27,7 @@ import * as uiStateUpdaters from './ui-state-updaters';
  * It is used to generate documentation
  */
 const actionHandler = {
+  [ActionTypes.INIT]: uiStateUpdaters.initUiStateUpdater,
   [ActionTypes.TOGGLE_SIDE_PANEL]: uiStateUpdaters.toggleSidePanelUpdater,
   [ActionTypes.TOGGLE_MODAL]: uiStateUpdaters.toggleModalUpdater,
   [ActionTypes.SHOW_EXPORT_DROPDOWN]: uiStateUpdaters.showExportDropdownUpdater,
@@ -36,11 +37,11 @@ const actionHandler = {
   [ActionTypes.ADD_NOTIFICATION]: uiStateUpdaters.addNotificationUpdater,
   [ActionTypes.REMOVE_NOTIFICATION]: uiStateUpdaters.removeNotificationUpdater,
 
-  [ActionTypes.SET_EXPORT_IMAGE_SETTING]: uiStateUpdaters.setExportImageSetting,
-  [ActionTypes.START_EXPORTING_IMAGE]: uiStateUpdaters.startExportingImage,
-  [ActionTypes.SET_EXPORT_IMAGE_DATA_URI]: uiStateUpdaters.setExportImageDataUri,
-  [ActionTypes.SET_EXPORT_IMAGE_ERROR]: uiStateUpdaters.setExportImageError,
-  [ActionTypes.CLEANUP_EXPORT_IMAGE]: uiStateUpdaters.cleanupExportImage,
+  [ActionTypes.SET_EXPORT_IMAGE_SETTING]: uiStateUpdaters.setExportImageSettingUpdater,
+  [ActionTypes.SET_EXPORT_IMAGE_DATA_URI]: uiStateUpdaters.setExportImageDataUriUpdater,
+  [ActionTypes.SET_EXPORT_IMAGE_ERROR]: uiStateUpdaters.setExportImageErrorUpdater,
+  [ActionTypes.CLEANUP_EXPORT_IMAGE]: uiStateUpdaters.cleanupExportImageUpdater,
+  [ActionTypes.START_EXPORTING_IMAGE]: uiStateUpdaters.startExportingImageUpdater,
 
   [ActionTypes.SET_EXPORT_SELECTED_DATASET]: uiStateUpdaters.setExportSelectedDatasetUpdater,
   [ActionTypes.SET_EXPORT_DATA_TYPE]: uiStateUpdaters.setExportDataTypeUpdater,
@@ -50,7 +51,7 @@ const actionHandler = {
 
   [ActionTypes.SET_EXPORT_MAP_FORMAT]: uiStateUpdaters.setExportMapFormatUpdater,
 
-  [ActionTypes.SET_EXPORT_MAP_HTML_MODE]: uiStateUpdaters.setExportMapHTMLMode,
+  [ActionTypes.SET_EXPORT_MAP_HTML_MODE]: uiStateUpdaters.setExportMapHTMLModeUpdater,
   [ActionTypes.LOAD_FILES]: uiStateUpdaters.loadFilesUpdater,
   [ActionTypes.LOAD_FILES_ERR]: uiStateUpdaters.loadFilesErrUpdater,
 

@@ -21,7 +21,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 import {Tooltip} from 'components/common/styled-components';
 
 const propTypes = {
@@ -34,6 +34,7 @@ const PanelHeaderBottom = styled.div.attrs({
   className: 'side-side-panel__header__bottom'
 })`
   background-color: ${props => props.theme.sidePanelHeaderBg};
+  border-bottom: 1px solid ${props => props.theme.sidePanelHeaderBorder};
   padding: 0 16px;
   display: flex;
   min-height: 30px;
@@ -45,13 +46,14 @@ const PanelTab = styled.div.attrs({
   align-items: flex-end;
   border-bottom-style: solid;
   border-bottom-width: 2px;
-  border-bottom-color: ${props => (props.active ? props.theme.subtextColorActive : 'transparent')};
+  border-bottom-color: ${props =>
+    props.active ? props.theme.panelToggleBorderColor : 'transparent'};
   color: ${props => (props.active ? props.theme.subtextColorActive : props.theme.subtextColor)};
   display: flex;
   justify-content: center;
-  margin-right: 12px;
-  padding-bottom: 6px;
-  width: 30px;
+  margin-right: ${props => props.theme.panelToggleMarginRight}px;
+  padding-bottom: ${props => props.theme.panelToggleBottomPadding}px;
+  width: ${props => props.theme.panelTabWidth};
 
   :hover {
     cursor: pointer;

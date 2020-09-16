@@ -19,12 +19,11 @@
 // THE SOFTWARE.
 
 import React, {Component, createRef} from 'react';
-import PropTypes from 'prop-types';
 import styled from 'styled-components';
-
+import {injectIntl} from 'react-intl';
 import UploadButton from './upload-button';
 import {DragNDrop, FileType} from 'components/common/icons';
-import LoadingSpinner from 'components/common/loading-spinner';
+import FileUploadProgress from 'components/common/file-uploader/file-upload-progress';
 import FileDrop from './file-drop';
 
 import {isChrome} from 'utils/utils';
@@ -32,13 +31,9 @@ import {GUIDES_FILE_FORMAT_DOC} from 'constants/user-guides';
 import ReactMarkdown from 'react-markdown';
 // Breakpoints
 import {media} from 'styles/media-breakpoints';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
-// File.type is not reliable if the OS does not have a
-// registered mapping for the extension.
-// NOTE: Shapefiles must be in a compressed format since
-// it requires multiple files to be present.
-const defaultValidFileExt = ['csv', 'json', 'geojson'];
+/** @typedef {import('./file-upload').FileUploadProps} FileUploadProps */
 
 const fileIconColor = '#D3D8E0';
 
@@ -65,28 +60,25 @@ export const WarningMsg = styled.span`
   font-weight: 500;
 `;
 
-const PositiveMsg = styled.span`
-  display: inline-block;
-  color: ${props => props.theme.primaryBtnActBgd};
-  font-weight: 500;
-  margin-right: 8px;
-`;
-
 const StyledFileDrop = styled.div`
   background-color: white;
   border-radius: 4px;
-  border-style: dashed;
+  border-style: ${props => (props.dragOver ? 'solid' : 'dashed')};
   border-width: 1px;
-  border-color: ${props => props.theme.subtextColorLT};
+  border-color: ${props => (props.dragOver ? props.theme.textColorLT : props.theme.subtextColorLT)};
   text-align: center;
   width: 100%;
   padding: 48px 8px 0;
+  height: 360px;
 
   .file-upload-or {
     color: ${props => props.theme.linkBtnColor};
     padding-right: 4px;
   }
 
+  .file-type-row {
+    opacity: 0.5;
+  }
   ${media.portable`
     padding: 16px 4px 0;
   `};
@@ -155,17 +147,8 @@ const StyledDisclaimer = styled(StyledMessage)`
 `;
 
 function FileUploadFactory() {
+  /** @augments {Component<FileUploadProps>} */
   class FileUpload extends Component {
-    static propTypes = {
-      onFileUpload: PropTypes.func.isRequired,
-      validFileExt: PropTypes.arrayOf(PropTypes.string),
-      fileLoading: PropTypes.bool
-    };
-
-    static defaultProps = {
-      validFileExt: defaultValidFileExt
-    };
-
     state = {
       dragOver: false,
       fileLoading: false,
@@ -188,27 +171,34 @@ function FileUploadFactory() {
     frame = createRef();
 
     _isValidFileType = filename => {
-      const {validFileExt} = this.props;
-      const fileExt = validFileExt.find(ext => filename.endsWith(ext));
+      const {fileExtensions = []} = this.props;
+      const fileExt = fileExtensions.find(ext => filename.endsWith(ext));
 
       return Boolean(fileExt);
     };
 
-    _handleFileInput = (files, e) => {
-      if (e) {
-        e.stopPropagation();
+    /** @param {FileList} fileList */
+    _handleFileInput = (fileList, event) => {
+      if (event) {
+        event.stopPropagation();
       }
 
-      const nextState = {files: [], errorFiles: [], dragOver: false};
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      const files = [...fileList].filter(Boolean);
 
-        if (file && this._isValidFileType(file.name)) {
-          nextState.files.push(file);
+      const {disableExtensionFilter = false} = this.props;
+
+      // TODO - move this code out of the component
+      const filesToLoad = [];
+      const errorFiles = [];
+      for (const file of files) {
+        if (disableExtensionFilter || this._isValidFileType(file.name)) {
+          filesToLoad.push(file);
         } else {
-          nextState.errorFiles.push(file.name);
+          errorFiles.push(file.name);
         }
       }
+
+      const nextState = {files: filesToLoad, errorFiles, dragOver: false};
 
       this.setState(nextState, () =>
         nextState.files.length ? this.props.onFileUpload(nextState.files) : null
@@ -219,43 +209,10 @@ function FileUploadFactory() {
       this.setState({dragOver: newState});
     };
 
-    _renderMessage() {
-      const {errorFiles, files} = this.state;
-      if (errorFiles.length) {
-        return (
-          <WarningMsg>
-            <FormattedMessage
-              id={'fileUploader.filenNotSupported'}
-              values={{errorFiles: errorFiles.join(', ')}}
-            />
-          </WarningMsg>
-        );
-      } else if (this.props.fileLoading && files.length) {
-        return (
-          <StyledMessage className="file-uploader__message">
-            <div className="loading-action">
-              <FormattedMessage id={'fileUploader.uploading'} />
-            </div>
-            <div>
-              {files.map((f, i) => (
-                <PositiveMsg key={i}>{f.name}</PositiveMsg>
-              ))}
-              ...
-            </div>
-            <div className="loading-spinner">
-              <LoadingSpinner size={20} />
-            </div>
-          </StyledMessage>
-        );
-      }
-
-      return null;
-    }
-
     render() {
-      const {dragOver, files} = this.state;
-      const {validFileExt, intl} = this.props;
-
+      const {dragOver, files, errorFiles} = this.state;
+      const {fileLoading, fileLoadingProgress, theme, intl} = this.props;
+      const {fileExtensions = [], fileFormatNames = []} = this.props;
       return (
         <StyledFileUpload className="file-uploader" ref={this.frame}>
           {FileDrop ? (
@@ -268,40 +225,63 @@ function FileUploadFactory() {
             >
               <StyledUploadMessage className="file-upload__message">
                 <ReactMarkdown
-                  source={`${intl.formatMessage({
-                    id: 'fileUploader.configUploadMessage'
-                  })}(${GUIDES_FILE_FORMAT_DOC}).`}
+                  source={`${intl.formatMessage(
+                    {
+                      id: 'fileUploader.configUploadMessage'
+                    },
+                    {
+                      fileFormatNames: fileFormatNames.map(format => `**${format}**`).join(', ')
+                    }
+                  )}(${GUIDES_FILE_FORMAT_DOC}).`}
                   renderers={{link: LinkRenderer}}
                 />
               </StyledUploadMessage>
               <StyledFileDrop dragOver={dragOver}>
-                <div style={{opacity: dragOver ? 0.5 : 1}}>
-                  <StyledDragNDropIcon>
-                    <StyledFileTypeFow className="file-type-row">
-                      {validFileExt.map(ext => (
-                        <FileType key={ext} ext={ext} height="50px" fontSize="9px" />
-                      ))}
-                    </StyledFileTypeFow>
-                    <DragNDrop height="44px" />
-                  </StyledDragNDropIcon>
-                  <div>{this._renderMessage()}</div>
-                </div>
-                {!files.length ? (
-                  <StyledDragFileWrapper>
-                    <MsgWrapper>
-                      <FormattedMessage id={'fileUploader.message'} />
-                    </MsgWrapper>
-                    <span className="file-upload-or">
-                      <FormattedMessage id={'fileUploader.or'} />
-                    </span>
-                    <UploadButton onUpload={this._handleFileInput}>
-                      <FormattedMessage id={'fileUploader.browseFiles'} />
-                    </UploadButton>
-                  </StyledDragFileWrapper>
-                ) : null}
-                <StyledDisclaimer>
-                  <FormattedMessage id={'fileUploader.disclaimer'} />
-                </StyledDisclaimer>
+                <StyledFileTypeFow className="file-type-row">
+                  {fileExtensions.map(ext => (
+                    <FileType key={ext} ext={ext} height="50px" fontSize="9px" />
+                  ))}
+                </StyledFileTypeFow>
+                {fileLoading ? (
+                  <FileUploadProgress fileLoadingProgress={fileLoadingProgress} theme={theme} />
+                ) : (
+                  <>
+                    <div
+                      style={{opacity: dragOver ? 0.5 : 1}}
+                      className="file-upload-display-message"
+                    >
+                      <StyledDragNDropIcon>
+                        <DragNDrop height="44px" />
+                      </StyledDragNDropIcon>
+
+                      {errorFiles.length ? (
+                        <WarningMsg>
+                          <FormattedMessage
+                            id={'fileUploader.fileNotSupported'}
+                            values={{errorFiles: errorFiles.join(', ')}}
+                          />
+                        </WarningMsg>
+                      ) : null}
+                    </div>
+                    {!files.length ? (
+                      <StyledDragFileWrapper>
+                        <MsgWrapper>
+                          <FormattedMessage id={'fileUploader.message'} />
+                        </MsgWrapper>
+                        <span className="file-upload-or">
+                          <FormattedMessage id={'fileUploader.or'} />
+                        </span>
+                        <UploadButton onUpload={this._handleFileInput}>
+                          <FormattedMessage id={'fileUploader.browseFiles'} />
+                        </UploadButton>
+                      </StyledDragFileWrapper>
+                    ) : null}
+
+                    <StyledDisclaimer>
+                      <FormattedMessage id={'fileUploader.disclaimer'} />
+                    </StyledDisclaimer>
+                  </>
+                )}
               </StyledFileDrop>
             </FileDrop>
           ) : null}

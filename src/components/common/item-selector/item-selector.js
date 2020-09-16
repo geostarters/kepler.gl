@@ -32,12 +32,15 @@ import {Delete} from 'components/common/icons';
 import DropdownList, {ListItem} from './dropdown-list';
 
 import {toArray} from 'utils/utils';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const StyledDropdownSelect = styled.div.attrs({
   className: 'item-selector__dropdown'
 })`
   ${props => (props.inputTheme === 'secondary' ? props.theme.secondaryInput : props.theme.input)};
+
+  height: ${props => props.theme.dropdownSelectHeight}px;
 
   .list__item__anchor {
     ${props => props.theme.dropdownListAnchor};
@@ -62,8 +65,10 @@ const DropdownWrapper = styled.div`
   z-index: ${props => props.theme.dropdownWrapperZ};
   position: absolute;
   bottom: ${props => (props.placement === 'top' ? props.theme.inputBoxHeight : 'auto')};
-  margin-top: ${props => (props.placement === 'bottom' ? '4px' : 'auto')};
-  margin-bottom: ${props => (props.placement === 'top' ? '4px' : 'auto')};
+  margin-top: ${props =>
+    props.placement === 'bottom' ? `${props.theme.dropdownWapperMargin}px` : 'auto'};
+  margin-bottom: ${props =>
+    props.placement === 'top' ? `${props.theme.dropdownWapperMargin}px` : 'auto'};
 `;
 
 class ItemSelector extends Component {
@@ -95,7 +100,8 @@ class ItemSelector extends Component {
     closeOnSelect: PropTypes.bool,
     DropdownHeaderComponent: PropTypes.func,
     DropDownRenderComponent: PropTypes.func,
-    DropDownLineItemRenderComponent: PropTypes.func
+    DropDownLineItemRenderComponent: PropTypes.func,
+    CustomChickletComponent: PropTypes.func
   };
 
   static defaultProps = {
@@ -187,7 +193,8 @@ class ItemSelector extends Component {
     this.props.onChange(null);
   };
 
-  _showTypeahead = () => {
+  _showTypeahead = e => {
+    e.stopPropagation();
     if (!this.props.disabled) {
       this.setState({
         showTypeahead: true
@@ -250,6 +257,7 @@ class ItemSelector extends Component {
               placeholder={this.props.placeholder}
               displayOption={displayOption}
               removeItem={this._removeItem}
+              CustomChickletComponent={this.props.CustomChickletComponent}
             />
           ) : (
             <StyledDropdownSelect {...dropdownSelectProps}>

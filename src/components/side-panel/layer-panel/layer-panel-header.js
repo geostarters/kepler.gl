@@ -27,7 +27,7 @@ import PanelHeaderAction from 'components/side-panel/panel-header-action';
 import {ArrowDown, EyeSeen, EyeUnseen, Trash, VertDots} from 'components/common/icons';
 
 import {InlineInput, StyledPanelHeader} from 'components/common/styled-components';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const propTypes = {
   // required
@@ -53,6 +53,7 @@ export const defaultProps = {
 };
 
 const StyledLayerPanelHeader = styled(StyledPanelHeader)`
+  height: ${props => props.theme.layerPanelHeaderHeight}px;
   .layer__remove-layer {
     opacity: 0;
   }
@@ -79,18 +80,6 @@ const HeaderActionSection = styled.div`
   display: flex;
 `;
 
-const LayerTitleSection = styled.div`
-  margin-left: 4px;
-
-  .layer__title__type {
-    color: ${props => props.theme.subtextColor};
-    font-size: 10px;
-    line-height: 12px;
-    letter-spacing: 0.37px;
-    text-transform: capitalize;
-  }
-`;
-
 const StyledDragHandle = styled.div`
   display: flex;
   align-items: center;
@@ -108,7 +97,7 @@ export const DragHandle = sortableHandle(({className, children}) => (
   <StyledDragHandle className={className}>{children}</StyledDragHandle>
 ));
 
-const LayerLabelEditor = ({layerId, label, onEdit}) => (
+export const LayerLabelEditor = ({layerId, label, onEdit}) => (
   <InlineInput
     type="text"
     className="layer__title__editor"
@@ -121,7 +110,32 @@ const LayerLabelEditor = ({layerId, label, onEdit}) => (
   />
 );
 
-function LayerPanelHeaderFactory() {
+export function LayerTitleSectionFactory() {
+  const StyledLayerTitleSection = styled.div`
+    margin-left: 4px;
+
+    .layer__title__type {
+      color: ${props => props.theme.subtextColor};
+      font-size: 10px;
+      line-height: 12px;
+      letter-spacing: 0.37px;
+      text-transform: capitalize;
+    }
+  `;
+  const LayerTitleSection = ({layerType, layerId, label, onUpdateLayerLabel}) => (
+    <StyledLayerTitleSection className="layer__title">
+      <div>
+        <LayerLabelEditor layerId={layerId} label={label} onEdit={onUpdateLayerLabel} />
+        <div className="layer__title__type">
+          {layerType && <FormattedMessage id={`layer.type.${layerType.toLowerCase()}`} />}
+        </div>
+      </div>
+    </StyledLayerTitleSection>
+  );
+  return LayerTitleSection;
+}
+
+function LayerPanelHeaderFactory(LayerTitleSection) {
   const LayerPanelHeader = ({
     isConfigActive,
     isDragNDropEnabled,
@@ -150,14 +164,12 @@ function LayerPanelHeaderFactory() {
             <VertDots height="20px" />
           </DragHandle>
         )}
-        <LayerTitleSection className="layer__title">
-          <div>
-            <LayerLabelEditor layerId={layerId} label={label} onEdit={onUpdateLayerLabel} />
-            <div className="layer__title__type">
-              {layerType && <FormattedMessage id={`layer.type.${layerType.toLowerCase()}`} />}
-            </div>
-          </div>
-        </LayerTitleSection>
+        <LayerTitleSection
+          layerId={layerId}
+          label={label}
+          onUpdateLayerLabel={onUpdateLayerLabel}
+          layerType={layerType}
+        />
       </HeaderLabelSection>
       <HeaderActionSection className="layer-panel__header__actions">
         {showRemoveLayer ? (
@@ -193,5 +205,6 @@ function LayerPanelHeaderFactory() {
 
   return LayerPanelHeader;
 }
+LayerPanelHeaderFactory.deps = [LayerTitleSectionFactory];
 
 export default LayerPanelHeaderFactory;

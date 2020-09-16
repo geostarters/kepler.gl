@@ -230,9 +230,20 @@ test('#composerStateReducer - addDataToMapUpdater: keepExistingConfig', t => {
       tooltip: {
         ...oldInteractionConfig.tooltip,
         config: {
+          compareMode: false,
+          compareType: 'absolute',
           fieldsToShow: {
             ...oldInteractionConfig.tooltip.config.fieldsToShow,
-            [hexDataId]: ['hex_id', 'value']
+            [hexDataId]: [
+              {
+                name: 'hex_id',
+                format: null
+              },
+              {
+                name: 'value',
+                format: null
+              }
+            ]
           }
         }
       }
@@ -325,5 +336,28 @@ test('#composerStateReducer - addDataToMapUpdater: readOnly', t => {
     }
   });
   t.equal(nextState2.uiState.readOnly, false, 'should set readonly to be false');
+  t.end();
+});
+
+test('#composerStateReducer - addDataToMapUpdater: autoCreateLayers', t => {
+  const datasets = {
+    data: processCsvData(testCsvData),
+    info: {
+      id: sampleConfig.dataId
+    }
+  };
+  const state = keplerGlReducer({}, registerEntry({id: 'test'})).test;
+
+  // old state contain splitMaps
+  const nextState = addDataToMapUpdater(state, {
+    payload: {
+      datasets,
+      options: {
+        autoCreateLayers: false
+      }
+    }
+  });
+  t.equal(nextState.visState.layers.length, 0, 'should not create layers');
+
   t.end();
 });

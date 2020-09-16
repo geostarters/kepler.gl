@@ -42,6 +42,9 @@ const NODE_MODULES_DIR = resolve(__dirname, '../node_modules');
 // For debugging deck.gl, load deck.gl from external deck.gl directory
 const EXTERNAL_DECK_SRC = resolve(__dirname, '../../deck.gl');
 
+// For debugging loaders.gl, load loaders.gl from external loaders.gl directory
+const EXTERNAL_LOADERS_SRC = resolve(__dirname, '../../loaders.gl');
+
 // Support for hot reloading changes to the deck.gl library:
 function makeLocalDevConfig(env, EXAMPLE_DIR = LIB_DIR, externals = {}) {
   const resolveAlias = {
@@ -50,7 +53,8 @@ function makeLocalDevConfig(env, EXAMPLE_DIR = LIB_DIR, externals = {}) {
     react: `${NODE_MODULES_DIR}/react`,
     'react-dom': `${NODE_MODULES_DIR}/react-dom`,
     'react-redux': `${NODE_MODULES_DIR}/react-redux/lib`,
-    'styled-components': `${NODE_MODULES_DIR}/styled-components`
+    'styled-components': `${NODE_MODULES_DIR}/styled-components`,
+    'react-intl': `${NODE_MODULES_DIR}/react-intl`
   };
 
   // resolve deck.gl from local dir
@@ -85,6 +89,12 @@ function makeLocalDevConfig(env, EXAMPLE_DIR = LIB_DIR, externals = {}) {
           ? `${NODE_MODULES_DIR}/@${name}/${mdl}/src`
           : `${EXTERNAL_DECK_SRC}/node_modules/@${name}/${mdl}/src`;
       });
+    });
+  }
+
+  if (env.loaders_src) {
+    externals['loaders.gl'].forEach(mdl => {
+      resolveAlias[`@loaders.gl/${mdl}`] = `${EXTERNAL_LOADERS_SRC}/modules/${mdl}/src`;
     });
   }
 
@@ -159,34 +169,8 @@ function makeBabelRule(env, exampleDir) {
     options: {
       presets: ['@babel/preset-env', '@babel/preset-react'],
       plugins: [
-        ['@babel/plugin-proposal-decorators', {legacy: true}],
         '@babel/plugin-proposal-class-properties',
-        [
-          '@babel/transform-runtime',
-          {
-            regenerator: true
-          }
-        ],
-        '@babel/plugin-syntax-dynamic-import',
-        '@babel/plugin-syntax-import-meta',
-        '@babel/plugin-proposal-json-strings',
-        '@babel/plugin-proposal-function-sent',
         '@babel/plugin-proposal-export-namespace-from',
-        '@babel/plugin-proposal-numeric-separator',
-        '@babel/plugin-proposal-throw-expressions',
-        '@babel/plugin-proposal-export-default-from',
-        '@babel/plugin-proposal-logical-assignment-operators',
-        '@babel/plugin-proposal-optional-chaining',
-        [
-          '@babel/plugin-proposal-pipeline-operator',
-          {
-            proposal: 'minimal'
-          }
-        ],
-        '@babel/plugin-proposal-nullish-coalescing-operator',
-        '@babel/plugin-proposal-do-expressions',
-        '@babel/plugin-proposal-function-bind',
-        '@babel/plugin-transform-modules-commonjs',
         [
           'module-resolver',
           {
@@ -276,9 +260,7 @@ module.exports = (exampleConfig, exampleDir) => env => {
       'probe.gl': results[3]
     }))
     .then(externals => {
-      let config = addLocalDevSettings(env, exampleConfig, exampleDir, externals);
-      config = addBabelSettings(env, config, exampleDir, externals);
-
-      return config;
+      const config = addLocalDevSettings(env, exampleConfig, exampleDir, externals);
+      return addBabelSettings(env, config, exampleDir, externals);
     });
 };

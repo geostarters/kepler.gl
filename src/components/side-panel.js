@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 import React, {PureComponent} from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import get from 'lodash.get';
@@ -37,13 +37,13 @@ import {
   ADD_DATA_ID,
   ADD_MAP_STYLE_ID,
   DATA_TABLE_ID,
-  EXPORT_IMAGE_ID,
   EXPORT_DATA_ID,
   EXPORT_MAP_ID,
-  SAVE_MAP_ID,
   SHARE_MAP_ID,
   SIDEBAR_PANELS,
-  OVERWRITE_MAP_ID
+  OVERWRITE_MAP_ID,
+  SAVE_MAP_ID,
+  EXPORT_IMAGE_ID
 } from 'constants/default-settings';
 
 const SidePanelContent = styled.div`
@@ -62,7 +62,8 @@ const SidePanelContent = styled.div`
 
 export const PanelTitleFactory = () => styled.div`
   color: ${props => props.theme.titleTextColor};
-  font-size: 20px;
+  font-size: ${props => props.theme.sidePanelTitleFontsize};
+  line-height: ${props => props.theme.sidePanelTitleLineHeight};
   font-weight: 400;
   letter-spacing: 1.25px;
   margin-bottom: 14px;
@@ -156,15 +157,15 @@ export default function SidePanelFactory(
 
     _onClickExportMap = () => this.props.uiStateActions.toggleModal(EXPORT_MAP_ID);
 
-    _onClickSaveToStorage = () => {
+    _onClickSaveToStorage = () =>
       this.props.uiStateActions.toggleModal(this.props.mapSaved ? OVERWRITE_MAP_ID : SAVE_MAP_ID);
-    };
 
     _onClickSaveAsToStorage = () => {
       // add (copy) to file name
       this.props.visStateActions.setMapInfo({
         title: `${this.props.mapInfo.title || 'Kepler.gl'} (Copy)`
       });
+
       this.props.uiStateActions.toggleModal(SAVE_MAP_ID);
     };
 

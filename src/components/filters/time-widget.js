@@ -22,8 +22,6 @@ import React, {Component} from 'react';
 import styled from 'styled-components';
 import {createSelector} from 'reselect';
 
-import FieldSelector from 'components/common/field-selector';
-
 import {
   SelectTextBold,
   IconRoundSmall,
@@ -34,9 +32,13 @@ import {Close, Clock, LineChart} from 'components/common/icons';
 import SpeedControlFactory from 'components/common/animation-control/speed-control';
 import TimeRangeFilterFactory from 'components/filters/time-range-filter';
 import FloatingTimeDisplayFactory from 'components/common/animation-control/floating-time-display';
+import FieldSelectorFactory from '../common/field-selector';
 
 const TOP_SECTION_HEIGHT = '36px';
 
+const TimeBottomWidgetInner = styled(BottomWidgetInner)`
+  padding: 6px 32px 16px 32px;
+`;
 const TopSectionWrapper = styled.div`
   display: flex;
   justify-content: space-between;
@@ -100,9 +102,13 @@ const StyledTitle = styled(CenterFlexbox)`
   }
 `;
 
-TimeWidgetFactory.deps = [SpeedControlFactory, TimeRangeFilterFactory, FloatingTimeDisplayFactory];
-
-function TimeWidgetFactory(SpeedControl, TimeRangeFilter, FloatingTimeDisplay) {
+TimeWidgetFactory.deps = [
+  SpeedControlFactory,
+  TimeRangeFilterFactory,
+  FloatingTimeDisplayFactory,
+  FieldSelectorFactory
+];
+function TimeWidgetFactory(SpeedControl, TimeRangeFilter, FloatingTimeDisplay, FieldSelector) {
   class TimeWidget extends Component {
     state = {
       showSpeedControl: false
@@ -130,7 +136,7 @@ function TimeWidgetFactory(SpeedControl, TimeRangeFilter, FloatingTimeDisplay) {
 
       const {showSpeedControl} = this.state;
       return (
-        <BottomWidgetInner className="bottom-widget--inner">
+        <TimeBottomWidgetInner className="bottom-widget--inner">
           <TopSectionWrapper>
             <StyledTitle className="bottom-widget__field">
               <CenterFlexbox className="bottom-widget__icon">
@@ -179,7 +185,7 @@ function TimeWidgetFactory(SpeedControl, TimeRangeFilter, FloatingTimeDisplay) {
             isAnimatable
           />
           {showTimeDisplay ? <FloatingTimeDisplay currentTime={filter.value} /> : null}
-        </BottomWidgetInner>
+        </TimeBottomWidgetInner>
       );
     }
   }

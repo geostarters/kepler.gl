@@ -25,7 +25,7 @@ import {ADD_DATA_TO_MAP_DOC} from 'constants/user-guides';
 import styled from 'styled-components';
 import {StyledExportSection} from 'components/common/styled-components';
 import {StyledExportMapSection, StyledWarning, ExportMapLink} from './components';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const StyledJsonExportSection = styled(StyledExportSection)`
   .note {
@@ -57,7 +57,7 @@ const exportJsonPropTypes = {
   options: PropTypes.object
 };
 
-const ExportJsonMap = React.memo(({config = {}}) => (
+const ExportJsonMapUnmemoized = ({config = {}}) => (
   <div>
     <StyledExportMapSection>
       <div className="description" />
@@ -87,11 +87,13 @@ const ExportJsonMap = React.memo(({config = {}}) => (
       </div>
     </StyledJsonExportSection>
   </div>
-));
+);
 
-ExportJsonMap.propTypes = exportJsonPropTypes;
+ExportJsonMapUnmemoized.propTypes = exportJsonPropTypes;
 
-ExportJsonMap.displayName = 'ExportJsonMap';
+ExportJsonMapUnmemoized.displayName = 'ExportJsonMap';
+
+const ExportJsonMap = React.memo(ExportJsonMapUnmemoized);
 
 const ExportJsonMapFactory = () => ExportJsonMap;
 

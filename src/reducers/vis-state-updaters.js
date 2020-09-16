@@ -27,9 +27,15 @@ import xor from 'lodash.xor';
 import copy from 'copy-to-clipboard';
 import {parseFieldValue} from 'utils/data-utils';
 // Tasks
-import {LOAD_FILE_TASK} from 'tasks/tasks';
+import {LOAD_FILE_TASK, UNWRAP_TASK, PROCESS_FILE_DATA, DELAY_TASK} from 'tasks/tasks';
 // Actions
-import {loadFilesErr, loadFileSuccess, loadNextFile} from 'actions/vis-state-actions';
+import {
+  loadFilesErr,
+  loadFilesSuccess,
+  loadFileStepSuccess,
+  loadNextFile,
+  nextFileBatch
+} from 'actions/vis-state-actions';
 // Utils
 import {findFieldsToShow, getDefaultInteraction} from 'utils/interaction-utils';
 import {
@@ -51,16 +57,9 @@ import {assignGpuChannel, setFilterGpuMode} from 'utils/gpu-filter-utils';
 import {createNewDataEntry, sortDatasetByColumn} from 'utils/dataset-utils';
 import {set, toArray} from 'utils/utils';
 
-import {calculateLayerData, findDefaultLayer} from 'utils/layer-utils/layer-utils';
+import {calculateLayerData, findDefaultLayer} from 'utils/layer-utils';
 
-import {
-  mergeAnimationConfig,
-  mergeFilters,
-  mergeInteractions,
-  mergeLayerBlending,
-  mergeLayers,
-  mergeSplitMaps
-} from './vis-state-merger';
+import {isValidMerger, VIS_STATE_MERGERS} from './vis-state-merger';
 
 import {
   addNewLayersToSplitMap,
@@ -71,6 +70,19 @@ import {
 import {Layer, LayerClasses} from 'layers';
 import {DEFAULT_TEXT_LABEL} from 'layers/layer-factory';
 import {EDITOR_MODES, SORT_ORDER} from 'constants/default-settings';
+import {pick_, merge_} from './composer-helpers';
+import {processFileContent} from 'actions/vis-state-actions';
+
+import KeplerGLSchema from 'schemas';
+
+// type imports
+/** @typedef {import('./vis-state-updaters').Field} Field */
+/** @typedef {import('./vis-state-updaters').Filter} Filter */
+/** @typedef {import('./vis-state-updaters').Dataset} Dataset */
+/** @typedef {import('./vis-state-updaters').VisState} VisState */
+/** @typedef {import('./vis-state-updaters').Datasets} Datasets */
+/** @typedef {import('./vis-state-updaters').AnimationConfig} AnimationConfig */
+/** @typedef {import('./vis-state-updaters').Editor} Editor */
 
 // react-palm
 // disable capture exception for react-palm call to withTask
@@ -113,15 +125,18 @@ disableStackCapturing();
  * export default composedReducer;
  */
 /* eslint-disable no-unused-vars */
+// @ts-ignore
 const visStateUpdaters = null;
 /* eslint-enable no-unused-vars */
 
-export const defaultAnimationConfig = {
+/** @type {AnimationConfig} */
+export const DEFAULT_ANIMATION_CONFIG = {
   domain: null,
   currentTime: null,
   speed: 1
 };
 
+/** @type {Editor} */
 export const DEFAULT_EDITOR = {
   mode: EDITOR_MODES.DRAW_POLYGON,
   features: [],
@@ -133,25 +148,7 @@ export const DEFAULT_EDITOR = {
  * Default initial `visState`
  * @memberof visStateUpdaters
  * @constant
- * @type {Object}
- * @property {Array} layers
- * @property {Array} layerData
- * @property {Array} layerToBeMerged
- * @property {Array} layerOrder
- * @property {Array} filters
- * @property {Array} filterToBeMerged
- * @property {Array} datasets
- * @property {string} editingDataset
- * @property {Object} interactionConfig
- * @property {Object} interactionToBeMerged
- * @property {string} layerBlending
- * @property {Object} hoverInfo
- * @property {Object} clicked
- * @property {Object} mousePos
- * @property {Array} splitMaps - a list of objects of layer availabilities and visibilities for each map
- * @property {Object} layerClasses
- * @property {Object} animationConfig
- * @property {Object} editor
+ * @type {VisState}
  * @public
  */
 export const INITIAL_VIS_STATE = {
@@ -192,17 +189,34 @@ export const INITIAL_VIS_STATE = {
     //   }
     // ]
   ],
-  //
+  splitMapsToBeMerged: [],
+
   // defaults layer classes
   layerClasses: LayerClasses,
 
   // default animation
   // time in unix timestamp (milliseconds) (the number of seconds since the Unix Epoch)
-  animationConfig: defaultAnimationConfig,
+  animationConfig: DEFAULT_ANIMATION_CONFIG,
 
-  editor: DEFAULT_EDITOR
+  editor: DEFAULT_EDITOR,
+
+  fileLoading: false,
+  fileLoadingProgress: {},
+
+  loaders: [],
+  loadOptions: {},
+
+  // visStateMergers
+  mergers: VIS_STATE_MERGERS,
+
+  schema: KeplerGLSchema
 };
 
+/**
+ * Update state with updated layer and layerData
+ * @type {typeof import('./vis-state-updaters').updateStateWithLayerAndData}
+ *
+ */
 function updateStateWithLayerAndData(state, {layerData, layer, idx}) {
   return {
     ...state,
@@ -234,11 +248,8 @@ export function updateStateOnLayerVisibilityChange(state, layer) {
 /**
  * Update layer base config: dataId, label, column, isVisible
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.oldLayer layer to be updated
- * @param {Object} action.newConfig new config
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').layerConfigChangeUpdater}
+ * @returns nextState
  */
 export function layerConfigChangeUpdater(state, action) {
   const {oldLayer} = action;
@@ -310,6 +321,12 @@ function updateTextLabelPropAndValue(idx, prop, value, textLabel) {
   return newTextLabel;
 }
 
+/**
+ * Update layer base config: dataId, label, column, isVisible
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').layerTextLabelChangeUpdater}
+ * @returns nextState
+ */
 export function layerTextLabelChangeUpdater(state, action) {
   const {oldLayer, idx, prop, value} = action;
   const {textLabel} = oldLayer.config;
@@ -336,11 +353,7 @@ export function layerTextLabelChangeUpdater(state, action) {
 /**
  * Update layer type. Previews layer config will be copied if applicable.
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.oldLayer layer to be updated
- * @param {string} action.newType new type
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').layerTypeChangeUpdater}
  * @public
  */
 export function layerTypeChangeUpdater(state, action) {
@@ -400,16 +413,15 @@ export function layerTypeChangeUpdater(state, action) {
 /**
  * Update layer visual channel
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.oldLayer layer to be updated
- * @param {Object} action.newConfig new visual channel config
- * @param {string} action.channel channel to be updated
+ * @type {typeof import('./vis-state-updaters').layerVisualChannelChangeUpdater}
  * @returns {Object} nextState
  * @public
  */
 export function layerVisualChannelChangeUpdater(state, action) {
   const {oldLayer, newConfig, channel} = action;
+  if (!oldLayer.config.dataId) {
+    return state;
+  }
   const dataset = state.datasets[oldLayer.config.dataId];
 
   const idx = state.layers.findIndex(l => l.id === oldLayer.id);
@@ -426,11 +438,7 @@ export function layerVisualChannelChangeUpdater(state, action) {
 /**
  * Update layer `visConfig`
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.oldLayer layer to be updated
- * @param {Object} action.newVisConfig new visConfig as a key value map: e.g. `{opacity: 0.8}`
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').layerVisConfigChangeUpdater}
  * @public
  */
 export function layerVisConfigChangeUpdater(state, action) {
@@ -456,13 +464,7 @@ export function layerVisConfigChangeUpdater(state, action) {
 /**
  * Update filter property
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx `idx` of filter to be updated
- * @param {string} action.prop `prop` of filter, e,g, `dataId`, `name`, `value`
- * @param {*} action.value new value
- * @param {string} datasetId used when updating a prop (dataId, name) that can be linked to multiple datasets
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setFilterUpdater}
  * @public
  */
 export function setFilterUpdater(state, action) {
@@ -517,6 +519,7 @@ export function setFilterUpdater(state, action) {
       // We need to update only datasetId/s if we have added/removed layers
       // - check for layerId changes (XOR works because of string values)
       // if no differences between layerIds, don't do any filtering
+      // @ts-ignore
       const layerIdDifference = xor(newFilter.layerId, oldFilter.layerId);
 
       const layerDataIds = uniq(
@@ -591,23 +594,22 @@ export function setFilterUpdater(state, action) {
 /**
  * Set the property of a filter plot
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx
- * @param {Object} action.newProp key value mapping of new prop `{yAxis: 'histogram'}`
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setFilterPlotUpdater}
  * @public
  */
-export const setFilterPlotUpdater = (state, {idx, newProp}) => {
+export const setFilterPlotUpdater = (state, {idx, newProp, valueIndex = 0}) => {
   let newFilter = {...state.filters[idx], ...newProp};
   const prop = Object.keys(newProp)[0];
   if (prop === 'yAxis') {
     const plotType = getDefaultFilterPlotType(newFilter);
-
+    // TODO: plot is not supported in multi dataset filter for now
     if (plotType) {
       newFilter = {
         ...newFilter,
-        ...getFilterPlot({...newFilter, plotType}, state.datasets[newFilter.dataId].allData),
+        ...getFilterPlot(
+          {...newFilter, plotType},
+          state.datasets[newFilter.dataId[valueIndex]].allData
+        ),
         plotType
       };
     }
@@ -622,10 +624,7 @@ export const setFilterPlotUpdater = (state, {idx, newProp}) => {
 /**
  * Add a new filter
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {string} action.dataId dataset `id` this new filter is associated with
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').addFilterUpdater}
  * @public
  */
 export const addFilterUpdater = (state, action) =>
@@ -639,10 +638,7 @@ export const addFilterUpdater = (state, action) =>
 /**
  * Set layer color palette ui state
  * @memberof visStateUpdaters
- * @param {Object} state
- * @param {Object} action
- * @param {Object} action.prop
- * @param {Object} action.newConfig
+ * @type {typeof import('./vis-state-updaters').layerColorUIChangeUpdater}
  */
 export const layerColorUIChangeUpdater = (state, {oldLayer, prop, newConfig}) => {
   const newLayer = oldLayer.updateLayerColorUI(prop, newConfig);
@@ -655,10 +651,7 @@ export const layerColorUIChangeUpdater = (state, {oldLayer, prop, newConfig}) =>
 /**
  * Start and end filter animation
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx idx of filter
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').toggleFilterAnimationUpdater}
  * @public
  */
 export const toggleFilterAnimationUpdater = (state, action) => ({
@@ -669,11 +662,7 @@ export const toggleFilterAnimationUpdater = (state, action) => ({
 /**
  * Change filter animation speed
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx  `idx` of filter
- * @param {Number} action.speed `speed` to change it to. `speed` is a multiplier
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').updateFilterAnimationSpeedUpdater}
  * @public
  */
 export const updateFilterAnimationSpeedUpdater = (state, action) => ({
@@ -684,10 +673,7 @@ export const updateFilterAnimationSpeedUpdater = (state, action) => ({
 /**
  * Reset animation config current time to a specified value
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.value the value current time will be set to
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').updateAnimationTimeUpdater}
  * @public
  *
  */
@@ -702,10 +688,7 @@ export const updateAnimationTimeUpdater = (state, {value}) => ({
 /**
  * Update animation speed with the vertical speed slider
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.speed the updated speed of the animation
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').updateLayerAnimationSpeedUpdater}
  * @public
  *
  */
@@ -722,10 +705,7 @@ export const updateLayerAnimationSpeedUpdater = (state, {speed}) => {
 /**
  * Show larger time filter at bottom for time playback (apply to time filter only)
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx index of filter to enlarge
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').enlargeFilterUpdater}
  * @public
  */
 export const enlargeFilterUpdater = (state, action) => {
@@ -743,10 +723,7 @@ export const enlargeFilterUpdater = (state, action) => {
 /**
  * Toggles filter feature visibility
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx index of filter to enlarge
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').toggleFilterFeatureUpdater}
  */
 export const toggleFilterFeatureUpdater = (state, action) => {
   const filter = state.filters[action.idx];
@@ -760,17 +737,14 @@ export const toggleFilterFeatureUpdater = (state, action) => {
 
   return {
     ...state,
-    filters: Object.assign([].concat(state.filters), {[action.idx]: newFilter})
+    filters: Object.assign([...state.filters], {[action.idx]: newFilter})
   };
 };
 
 /**
  * Remove a filter
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx index of filter to b e removed
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').removeFilterUpdater}
  * @public
  */
 export const removeFilterUpdater = (state, action) => {
@@ -795,16 +769,13 @@ export const removeFilterUpdater = (state, action) => {
   newState = set(['datasets'], filteredDatasets, newState);
   newState = set(['editor'], newEditor, newState);
 
-  return updateAllLayerDomainData(newState, dataId);
+  return updateAllLayerDomainData(newState, dataId, undefined);
 };
 
 /**
  * Add a new layer
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.props - new layer props
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').addLayerUpdater}
  * @public
  */
 export const addLayerUpdater = (state, action) => {
@@ -828,10 +799,7 @@ export const addLayerUpdater = (state, action) => {
 /**
  * remove layer
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number} action.idx index of layer to b e removed
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').removeLayerUpdater}
  * @public
  */
 export const removeLayerUpdater = (state, {idx}) => {
@@ -856,10 +824,7 @@ export const removeLayerUpdater = (state, {idx}) => {
 /**
  * Reorder layer
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Array<Number>} action.order an array of layer indexes
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').reorderLayerUpdater}
  * @public
  */
 export const reorderLayerUpdater = (state, {order}) => ({
@@ -870,15 +835,12 @@ export const reorderLayerUpdater = (state, {order}) => ({
 /**
  * Remove a dataset and all layers, filters, tooltip configs that based on it
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {string} action.key dataset id
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').removeDatasetUpdater}
  * @public
  */
 export const removeDatasetUpdater = (state, action) => {
   // extract dataset key
-  const {key: datasetKey} = action;
+  const {dataId: datasetKey} = action;
   const {datasets} = state;
 
   // check if dataset is present
@@ -934,10 +896,7 @@ export const removeDatasetUpdater = (state, action) => {
 /**
  * update layer blending mode
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {string} action.mode one of `additive`, `normal` and `subtractive`
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').updateLayerBlendingUpdater}
  * @public
  */
 export const updateLayerBlendingUpdater = (state, action) => ({
@@ -948,10 +907,7 @@ export const updateLayerBlendingUpdater = (state, action) => ({
 /**
  * Display dataset table in a modal
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {string} action.dataId dataset id to show in table
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').showDatasetTableUpdater}
  * @public
  */
 export const showDatasetTableUpdater = (state, action) => {
@@ -964,8 +920,7 @@ export const showDatasetTableUpdater = (state, action) => {
 /**
  * reset visState to initial State
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').resetMapConfigUpdater}
  * @public
  */
 export const resetMapConfigUpdater = state => ({
@@ -977,12 +932,7 @@ export const resetMapConfigUpdater = state => ({
 /**
  * Propagate `visState` reducer with a new configuration. Current config will be override.
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.payload map config to be propagated
- * @param {Object} action.payload.config map config to be propagated
- * @param {Object} action.payload.option {keepExistingConfig: true | false}
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').receiveMapConfigUpdater}
  * @public
  */
 export const receiveMapConfigUpdater = (state, {payload: {config = {}, options = {}}}) => {
@@ -990,25 +940,15 @@ export const receiveMapConfigUpdater = (state, {payload: {config = {}, options =
     return state;
   }
 
-  const {
-    filters,
-    layers,
-    interactionConfig,
-    layerBlending,
-    splitMaps,
-    animationConfig
-  } = config.visState;
-
   const {keepExistingConfig} = options;
 
   // reset config if keepExistingConfig is falsy
   let mergedState = !keepExistingConfig ? resetMapConfigUpdater(state) : state;
-  mergedState = mergeLayers(mergedState, layers);
-  mergedState = mergeFilters(mergedState, filters);
-  mergedState = mergeInteractions(mergedState, interactionConfig);
-  mergedState = mergeLayerBlending(mergedState, layerBlending);
-  mergedState = mergeSplitMaps(mergedState, splitMaps);
-  mergedState = mergeAnimationConfig(mergedState, animationConfig);
+  for (const merger of state.mergers) {
+    if (isValidMerger(merger) && config.visState[merger.prop]) {
+      mergedState = merger.merge(mergedState, config.visState[merger.prop]);
+    }
+  }
 
   return mergedState;
 };
@@ -1016,10 +956,7 @@ export const receiveMapConfigUpdater = (state, {payload: {config = {}, options =
 /**
  * Trigger layer hover event with hovered object
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.info Object hovered, returned by deck.gl
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').layerHoverUpdater}
  * @public
  */
 export const layerHoverUpdater = (state, action) => ({
@@ -1032,10 +969,7 @@ export const layerHoverUpdater = (state, action) => ({
 /**
  * Update `interactionConfig`
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.config new config as key value map: `{tooltip: {enabled: true}}`
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').interactionConfigChangeUpdater}
  * @public
  */
 export function interactionConfigChangeUpdater(state, action) {
@@ -1069,7 +1003,7 @@ export function interactionConfigChangeUpdater(state, action) {
   };
 
   if (config.id === 'geocoder' && !config.enabled) {
-    return removeDatasetUpdater(newState, {key: 'geocoder_dataset'});
+    return removeDatasetUpdater(newState, {dataId: 'geocoder_dataset'});
   }
 
   return newState;
@@ -1078,10 +1012,7 @@ export function interactionConfigChangeUpdater(state, action) {
 /**
  * Trigger layer click event with clicked object
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.info Object clicked, returned by deck.gl
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').layerClickUpdater}
  * @public
  */
 export const layerClickUpdater = (state, action) => ({
@@ -1098,8 +1029,7 @@ export const layerClickUpdater = (state, action) => ({
 /**
  * Trigger map click event, unselect clicked object
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').mapClickUpdater}
  * @public
  */
 export const mapClickUpdater = state => {
@@ -1109,6 +1039,12 @@ export const mapClickUpdater = state => {
   };
 };
 
+/**
+ * Trigger map move event
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').mouseMoveUpdater}
+ * @public
+ */
 export const mouseMoveUpdater = (state, {evt}) => {
   if (Object.values(state.interactionConfig).some(config => config.enabled)) {
     return {
@@ -1126,10 +1062,7 @@ export const mouseMoveUpdater = (state, {evt}) => {
 /**
  * Toggle visibility of a layer for a split map
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Number|undefined} action.payload index of the split map
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').toggleSplitMapUpdater}
  * @public
  */
 export const toggleSplitMapUpdater = (state, action) =>
@@ -1145,11 +1078,7 @@ export const toggleSplitMapUpdater = (state, action) =>
 /**
  * Toggle visibility of a layer in a split map
  * @memberof visStateUpdaters
- * @param {Object} state
- * @param {Object} action
- * @param {Number} action.mapIndex index of the split map
- * @param {string} action.layerId id of the layer
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').toggleLayerForMapUpdater}
  * @public
  */
 export const toggleLayerForMapUpdater = (state, {mapIndex, layerId}) => {
@@ -1175,40 +1104,25 @@ export const toggleLayerForMapUpdater = (state, {mapIndex, layerId}) => {
 /**
  * Add new dataset to `visState`, with option to load a map config along with the datasets
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Array<Object>|Object} action.datasets - ***required** datasets can be a dataset or an array of datasets
- * Each dataset object needs to have `info` and `data` property.
- * @param {Object} action.datasets.info -info of a dataset
- * @param {string} action.datasets.info.id - id of this dataset. If config is defined, `id` should matches the `dataId` in config.
- * @param {string} action.datasets.info.label - A display name of this dataset
- * @param {Object} action.datasets.data - ***required** The data object, in a tabular format with 2 properties `fields` and `rows`
- * @param {Array<Object>} action.datasets.data.fields - ***required** Array of fields,
- * @param {string} action.datasets.data.fields.name - ***required** Name of the field,
- * @param {Array<Array>} action.datasets.data.rows - ***required** Array of rows, in a tabular format with `fields` and `rows`
- * @param {Object} action.options option object `{centerMap: true, keepExistingConfig: false}`
- * @param {Object} action.config map config
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').updateVisDataUpdater}
  * @public
  */
 /* eslint-disable max-statements */
+// eslint-disable-next-line complexity
 export const updateVisDataUpdater = (state, action) => {
   // datasets can be a single data entries or an array of multiple data entries
   const {config, options} = action;
-
   const datasets = toArray(action.datasets);
 
   const newDataEntries = datasets.reduce(
-    (accu, {info = {}, data}) => ({
+    (accu, {info = {}, data} = {}) => ({
       ...accu,
       ...(createNewDataEntry({info, data}, state.datasets) || {})
     }),
     {}
   );
 
-  if (!Object.keys(newDataEntries).length) {
-    return state;
-  }
+  const dataEmpty = Object.keys(newDataEntries).length < 1;
 
   // apply config if passed from action
   const previousState = config
@@ -1217,7 +1131,7 @@ export const updateVisDataUpdater = (state, action) => {
       })
     : state;
 
-  const stateWithNewData = {
+  let mergedState = {
     ...previousState,
     datasets: {
       ...previousState.datasets,
@@ -1225,25 +1139,20 @@ export const updateVisDataUpdater = (state, action) => {
     }
   };
 
-  // previously saved config before data loaded
-  const {
-    filterToBeMerged = [],
-    layerToBeMerged = [],
-    interactionToBeMerged = {},
-    splitMapsToBeMerged = []
-  } = stateWithNewData;
+  // merge state with config to be merged
+  for (const merger of mergedState.mergers) {
+    if (isValidMerger(merger) && merger.toMergeProp && mergedState[merger.toMergeProp]) {
+      const toMerge = mergedState[merger.toMergeProp];
+      mergedState[merger.toMergeProp] = INITIAL_VIS_STATE[merger.toMergeProp];
+      mergedState = merger.merge(mergedState, toMerge);
+    }
+  }
 
-  // We need to merge layers before filters because polygon filters requires layers to be loaded
-  let mergedState = mergeLayers(stateWithNewData, layerToBeMerged);
+  let newLayers = !dataEmpty
+    ? mergedState.layers.filter(l => l.config.dataId in newDataEntries)
+    : [];
 
-  mergedState = mergeFilters(mergedState, filterToBeMerged);
-
-  // merge state with saved splitMaps
-  mergedState = mergeSplitMaps(mergedState, splitMapsToBeMerged);
-
-  let newLayers = mergedState.layers.filter(l => l.config.dataId in newDataEntries);
-
-  if (!newLayers.length) {
+  if (!newLayers.length && (options || {}).autoCreateLayers !== false) {
     // no layer merged, find defaults
     const result = addDefaultLayers(mergedState, newDataEntries);
     mergedState = result.state;
@@ -1259,9 +1168,6 @@ export const updateVisDataUpdater = (state, action) => {
     };
   }
 
-  // merge state with saved interactions
-  mergedState = mergeInteractions(mergedState, interactionToBeMerged);
-
   // if no tooltips merged add default tooltips
   Object.keys(newDataEntries).forEach(dataId => {
     const tooltipFields = mergedState.interactionConfig.tooltip.config.fieldsToShow[dataId];
@@ -1270,7 +1176,11 @@ export const updateVisDataUpdater = (state, action) => {
     }
   });
 
-  let updatedState = updateAllLayerDomainData(mergedState, Object.keys(newDataEntries));
+  let updatedState = updateAllLayerDomainData(
+    mergedState,
+    dataEmpty ? Object.keys(mergedState.datasets) : Object.keys(newDataEntries),
+    undefined
+  );
 
   // register layer animation domain,
   // need to be called after layer data is calculated
@@ -1316,84 +1226,205 @@ function closeSpecificMapAtIndex(state, action) {
 /**
  * Trigger file loading dispatch `addDataToMap` if succeed, or `loadFilesErr` if failed
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Array<Object>} action.files array of fileblob
- * @param {Function} action.onFinish action creator to execute after load file succeed
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').loadFilesUpdater}
  * @public
  */
 export const loadFilesUpdater = (state, action) => {
-  const {files, onFinish = loadFileSuccess} = action;
+  const {files, onFinish = loadFilesSuccess} = action;
   if (!files.length) {
     return state;
   }
 
-  const fileCache = [];
-  return withTask(
-    {
-      ...state,
-      fileLoading: true,
-      fileLoadingProgress: 0
-    },
-    makeLoadFileTask(files.length, files, fileCache, onFinish)
+  const fileLoadingProgress = Array.from(files).reduce(
+    (accu, f, i) => merge_(initialFileLoadingProgress(f, i))(accu),
+    {}
   );
+
+  const fileLoading = {
+    fileCache: [],
+    filesToLoad: files,
+    onFinish
+  };
+
+  const nextState = merge_({fileLoadingProgress, fileLoading})(state);
+
+  return loadNextFileUpdater(nextState);
 };
 
-export function loadNextFileUpdater(state, action) {
-  const {fileCache, filesToLoad, totalCount, onFinish} = action;
-  const fileLoadingProgress = ((totalCount - filesToLoad.length) / totalCount) * 100;
+/**
+ * Sucessfully loaded one file, move on to the next one
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').loadFileStepSuccessUpdater}
+ * @public
+ */
+export function loadFileStepSuccessUpdater(state, action) {
+  if (!state.fileLoading) {
+    return state;
+  }
+  const {fileName, fileCache} = action;
+  const {filesToLoad, onFinish} = state.fileLoading;
+  const stateWithProgress = updateFileLoadingProgressUpdater(state, {
+    fileName,
+    progress: {percent: 1, message: 'Done'}
+  });
+
+  // save processed file to fileCache
+  const stateWithCache = pick_('fileLoading')(merge_({fileCache}))(stateWithProgress);
 
   return withTask(
-    {
-      ...state,
-      fileLoadingProgress
-    },
-    makeLoadFileTask(totalCount, filesToLoad, fileCache, onFinish)
+    stateWithCache,
+    DELAY_TASK(200).map(filesToLoad.length ? loadNextFile : () => onFinish(fileCache))
   );
 }
 
-export function makeLoadFileTask(totalCount, filesToLoad, fileCache, onFinish) {
+// withTask<T>(state: T, task: any): T
+
+/**
+ *
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').loadNextFileUpdater}
+ * @public
+ */
+export function loadNextFileUpdater(state) {
+  if (!state.fileLoading) {
+    return state;
+  }
+  const {filesToLoad} = state.fileLoading;
   const [file, ...remainingFilesToLoad] = filesToLoad;
 
-  return LOAD_FILE_TASK({file, fileCache}).bimap(
-    // success
-    result =>
-      remainingFilesToLoad.length
-        ? loadNextFile({
-            fileCache: result,
-            filesToLoad: remainingFilesToLoad,
-            totalCount,
-            onFinish
-          })
-        : onFinish(result),
-    // error
-    loadFilesErr
+  // save filesToLoad to state
+  const nextState = pick_('fileLoading')(merge_({filesToLoad: remainingFilesToLoad}))(state);
+
+  const stateWithProgress = updateFileLoadingProgressUpdater(nextState, {
+    fileName: file.name,
+    progress: {percent: 0, message: 'loading...'}
+  });
+
+  const {loaders, loadOptions} = state;
+  return withTask(
+    stateWithProgress,
+    makeLoadFileTask(file, nextState.fileLoading.fileCache, loaders, loadOptions)
   );
 }
+
+export function makeLoadFileTask(file, fileCache, loaders = [], loadOptions = {}) {
+  return LOAD_FILE_TASK({file, fileCache, loaders, loadOptions}).bimap(
+    // prettier ignore
+    // success
+    gen =>
+      nextFileBatch({
+        gen,
+        fileName: file.name,
+        onFinish: result =>
+          processFileContent({
+            content: result,
+            fileCache
+          })
+      }),
+
+    // error
+    err => loadFilesErr(file.name, err)
+  );
+}
+
+/**
+ *
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').processFileContentUpdater}
+ * @public
+ */
+export function processFileContentUpdater(state, action) {
+  const {content, fileCache} = action.payload;
+
+  const stateWithProgress = updateFileLoadingProgressUpdater(state, {
+    fileName: content.fileName,
+    progress: {percent: 1, message: 'processing...'}
+  });
+
+  return withTask(
+    stateWithProgress,
+    PROCESS_FILE_DATA({content, fileCache}).bimap(
+      result => loadFileStepSuccess({fileName: content.fileName, fileCache: result}),
+      err => loadFilesErr(content.fileName, err)
+    )
+  );
+}
+
+export function parseProgress(prevProgress = {}, progress) {
+  // This happens when receiving query metadata or other cases we don't
+  // have an update for the user.
+  if (!progress || !progress.percent) {
+    return {};
+  }
+
+  return {
+    percent: progress.percent
+  };
+}
+
+/**
+ * gets called with payload = AsyncGenerator<???>
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').nextFileBatchUpdater}
+ * @public
+ */
+export const nextFileBatchUpdater = (
+  state,
+  {payload: {gen, fileName, progress, accumulated, onFinish}}
+) => {
+  const stateWithProgress = updateFileLoadingProgressUpdater(state, {
+    fileName,
+    progress: parseProgress(state.fileLoadingProgress[fileName], progress)
+  });
+  return withTask(
+    stateWithProgress,
+    UNWRAP_TASK(gen.next()).bimap(
+      ({value, done}) => {
+        return done
+          ? onFinish(accumulated)
+          : nextFileBatch({
+              gen,
+              fileName,
+              progress: value.progress,
+              accumulated: value,
+              onFinish
+            });
+      },
+      err => loadFilesErr(fileName, err)
+    )
+  );
+};
 
 /**
  * Trigger loading file error
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {*} action.error
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').loadFilesErrUpdater}
  * @public
  */
-export const loadFilesErrUpdater = (state, {error}) => ({
-  ...state,
-  fileLoading: false,
-  fileLoadingErr: error
-});
+export const loadFilesErrUpdater = (state, {error, fileName}) => {
+  // update ui with error message
+  Console.warn(error);
+  if (!state.fileLoading) {
+    return state;
+  }
+  const {filesToLoad, onFinish, fileCache} = state.fileLoading;
+
+  const nextState = updateFileLoadingProgressUpdater(state, {
+    fileName,
+    progress: {error}
+  });
+
+  // kick off next file or finish
+  return withTask(
+    nextState,
+    DELAY_TASK(200).map(filesToLoad.length ? loadNextFile : () => onFinish(fileCache))
+  );
+};
 
 /**
  * When select dataset for export, apply cpu filter to selected dataset
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action
- * @param {string} action.dataId dataset id
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').applyCPUFilterUpdater}
  * @public
  */
 export const applyCPUFilterUpdater = (state, {dataId}) => {
@@ -1406,10 +1437,7 @@ export const applyCPUFilterUpdater = (state, {dataId}) => {
 /**
  * User input to update the info of the map
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Object} action action
- * @param {Object} action.info {title: 'hello'}
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setMapInfoUpdater}
  * @public
  */
 export const setMapInfoUpdater = (state, action) => ({
@@ -1421,16 +1449,15 @@ export const setMapInfoUpdater = (state, action) => ({
 });
 /**
  * Helper function to update All layer domain and layer data of state
- * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {Array<string>} datasets
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').addDefaultLayers}
  */
 export function addDefaultLayers(state, datasets) {
-  const defaultLayers = Object.values(datasets).reduce(
-    (accu, dataset) => [...accu, ...(findDefaultLayer(dataset, state.layerClasses) || [])],
-    []
-  );
+  /** @type {Layer[]} */
+  const empty = [];
+  const defaultLayers = Object.values(datasets).reduce((accu, dataset) => {
+    const foundLayers = findDefaultLayer(dataset, state.layerClasses);
+    return foundLayers && foundLayers.length ? accu.concat(foundLayers) : accu;
+  }, empty);
 
   return {
     state: {
@@ -1462,12 +1489,25 @@ export function addDefaultTooltips(state, dataset) {
   return set(['interactionConfig', 'tooltip', 'config', 'fieldsToShow'], merged, state);
 }
 
+export function initialFileLoadingProgress(file, index) {
+  const fileName = file.name || `Untitled File ${index}`;
+  return {
+    [fileName]: {
+      // percent of current file
+      percent: 0,
+      message: '',
+      fileName,
+      error: null
+    }
+  };
+}
+
+export function updateFileLoadingProgressUpdater(state, {fileName, progress}) {
+  return pick_('fileLoadingProgress')(pick_(fileName)(merge_(progress)))(state);
+}
 /**
  * Helper function to update layer domains for an array of datasets
- * @param {Object} state
- * @param {Array|Array<string>} dataId dataset id or array of dataset ids
- * @param {Object} updatedFilter if is called by setFilter, the filter that has updated
- * @returns {Object} nextState
+ * @type {typeof import('./vis-state-updaters').updateAllLayerDomainData}
  */
 export function updateAllLayerDomainData(state, dataId, updatedFilter) {
   const dataIds = typeof dataId === 'string' ? [dataId] : dataId;
@@ -1514,7 +1554,7 @@ export function updateAnimationDomain(state) {
   if (!animatableLayers.length) {
     return {
       ...state,
-      animationConfig: defaultAnimationConfig
+      animationConfig: DEFAULT_ANIMATION_CONFIG
     };
   }
 
@@ -1541,9 +1581,7 @@ export function updateAnimationDomain(state) {
 /**
  * Update the status of the editor
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {string} mode to set to editor to
- * @return {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setEditorModeUpdater}
  */
 export const setEditorModeUpdater = (state, {mode}) => ({
   ...state,
@@ -1558,9 +1596,7 @@ export const setEditorModeUpdater = (state, {mode}) => ({
 /**
  * Update editor features
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {[Object]} features to store
- * @return {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setFeaturesUpdater}
  */
 export function setFeaturesUpdater(state, {features = []}) {
   const lastFeature = features.length && features[features.length - 1];
@@ -1588,7 +1624,7 @@ export function setFeaturesUpdater(state, {features = []}) {
 
   // if feature is part of a filter
   const filterId = feature && getFilterIdInFeature(feature);
-  if (filterId) {
+  if (filterId && feature) {
     const featureValue = featureToFilterValue(feature, filterId);
     const filterIdx = state.filters.findIndex(fil => fil.id === filterId);
     return setFilterUpdater(newState, {
@@ -1604,9 +1640,7 @@ export function setFeaturesUpdater(state, {features = []}) {
 /**
  * Set the current selected feature
  * @memberof uiStateUpdaters
- * @param {Object} state `uiState`
- * @param {[Object]} features to store
- * @return {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setSelectedFeatureUpdater}
  */
 export const setSelectedFeatureUpdater = (state, {feature}) => ({
   ...state,
@@ -1619,9 +1653,7 @@ export const setSelectedFeatureUpdater = (state, {feature}) => ({
 /**
  * Delete existing feature from filters
  * @memberof visStateUpdaters
- * @param {Object} state `visState`
- * @param {string} selectedFeatureId feature to delete
- * @return {Object} nextState
+ * @type {typeof import('./vis-state-updaters').deleteFeatureUpdater}
  */
 export function deleteFeatureUpdater(state, {feature}) {
   if (!feature) {
@@ -1658,11 +1690,7 @@ export function deleteFeatureUpdater(state, {feature}) {
 /**
  * Toggle feature as layer filter
  * @memberof visStateUpdaters
- * @param state
- * @param {Object} payload
- * @param {string} payload.featureId
- * @param {Object} payload.layer
- * @return {Object} nextState
+ * @type {typeof import('./vis-state-updaters').setPolygonFilterLayerUpdater}
  */
 export function setPolygonFilterLayerUpdater(state, payload) {
   const {layer, feature} = payload;
@@ -1697,15 +1725,14 @@ export function setPolygonFilterLayerUpdater(state, payload) {
         }
       };
     }
-
-    const {layerId} = state.filters[filterIdx] || [];
-    const isLayerIncluded = layerId.includes(layer.id);
     const filter = state.filters[filterIdx];
+    const {layerId = []} = filter;
+    const isLayerIncluded = layerId.includes(layer.id);
 
     newLayerId = isLayerIncluded
       ? // if layer is included, remove it
-        filter.layerId.filter(l => l !== layer.id)
-      : [...filter.layerId, layer.id];
+        layerId.filter(l => l !== layer.id)
+      : [...layerId, layer.id];
   } else {
     // if we haven't create the polygon filter, create it
     const newFilter = generatePolygonFilter([], feature);
@@ -1730,6 +1757,11 @@ export function setPolygonFilterLayerUpdater(state, payload) {
   });
 }
 
+/**
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').sortTableColumnUpdater}
+ * @public
+ */
 export function sortTableColumnUpdater(state, {dataId, column, mode}) {
   const dataset = state.datasets[dataId];
   if (!dataset) {
@@ -1746,6 +1778,11 @@ export function sortTableColumnUpdater(state, {dataId, column, mode}) {
   return set(['datasets', dataId], sorted, state);
 }
 
+/**
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').pinTableColumnUpdater}
+ * @public
+ */
 export function pinTableColumnUpdater(state, {dataId, column}) {
   const dataset = state.datasets[dataId];
   if (!dataset) {
@@ -1767,6 +1804,12 @@ export function pinTableColumnUpdater(state, {dataId, column}) {
   return set(['datasets', dataId, 'pinnedColumns'], pinnedColumns, state);
 }
 
+/**
+ * Copy column content as strings
+ * @memberof visStateUpdaters
+ * @type {typeof import('./vis-state-updaters').copyTableColumnUpdater}
+ * @public
+ */
 export function copyTableColumnUpdater(state, {dataId, column}) {
   const dataset = state.datasets[dataId];
   if (!dataset) {
@@ -1786,11 +1829,9 @@ export function copyTableColumnUpdater(state, {dataId, column}) {
 
 /**
  * Update editor
- * @param {Object} state `visState`
- * @param visible
- * @return {Object} nextState
+ * @type {typeof import('./vis-state-updaters').toggleEditorVisibilityUpdater}
  */
-export function toggleEditorVisibility(state, {visible}) {
+export function toggleEditorVisibilityUpdater(state) {
   return {
     ...state,
     editor: {

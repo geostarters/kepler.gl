@@ -30,7 +30,6 @@ const StyledSlider = styled.div`
     props.active ? props.theme.sliderBarHoverColor : props.theme.sliderBarColor};
   ${props => `${props.vertical ? 'width' : 'height'}: ${props.theme.sliderBarHeight}px`};
   border-radius: ${props => props.theme.sliderBarRadius};
-
   :hover {
     cursor: pointer;
   }
@@ -58,7 +57,9 @@ export default class SliderBarHandle extends Component {
     this.mouseEvent = new MouseEventHandler({
       vertical: props.vertical,
       valueListener: props.sliderBarListener,
-      toggleMouseOver: this.toggleMouseOver
+      toggleMouseOver: this.toggleMouseOver,
+      track: props.track,
+      setAnchor: props.setAnchor
     });
   }
 

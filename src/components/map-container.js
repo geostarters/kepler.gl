@@ -38,10 +38,11 @@ import {generateMapboxLayers, updateMapboxLayers} from 'layers/mapbox-utils';
 import {OVERLAY_TYPE} from 'layers/base-layer';
 import {setLayerBlending} from 'utils/gl-utils';
 import {transformRequest} from 'utils/map-style-utils/mapbox-utils';
+import {getLayerHoverProp} from 'utils/layer-utils';
 
 // default-settings
 import ThreeDBuildingLayer from 'deckgl-layers/3d-building-layer/3d-building-layer';
-import {FILTER_TYPES} from 'constants/default-settings';
+import {FILTER_TYPES, GEOCODER_LAYER_ID} from 'constants/default-settings';
 
 const MAP_STYLE = {
   container: {
@@ -61,19 +62,36 @@ const TRANSITION_DURATION = 0;
 
 const Attribution = () => (
   <StyledAttrbution>
-    <a href="https://kepler.gl/policy/" target="_blank" rel="noopener noreferrer">© kepler.gl | </a>
-    <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer">© Mapbox | </a>
-    <a href="http://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap | </a>
-    <a href="https://www.mapbox.com/map-feedback/" target="_blank" rel="noopener noreferrer">
-      <strong>Improve this map</strong>
-    </a>
+    <div className="attrition-logo">
+      Basemap by:
+      <a
+        className="mapboxgl-ctrl-logo"
+        target="_blank"
+        rel="noopener noreferrer"
+        href="https://www.mapbox.com/"
+        aria-label="Mapbox logo"
+      />
+    </div>
+    <div className="attrition-link">
+      <a href="https://kepler.gl/policy/" target="_blank" rel="noopener noreferrer">
+        © kepler.gl |{' '}
+      </a>
+      <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer">
+        © Mapbox |{' '}
+      </a>
+      <a href="http://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+        © OpenStreetMap |{' '}
+      </a>
+      <a href="https://www.mapbox.com/map-feedback/" target="_blank" rel="noopener noreferrer">
+        <strong>Improve this map</strong>
+      </a>
+    </div>
   </StyledAttrbution>
 );
 
 MapContainerFactory.deps = [MapPopoverFactory, MapControlFactory, EditorFactory];
 
 export default function MapContainerFactory(MapPopover, MapControl, Editor) {
-
   class MapContainer extends Component {
     static propTypes = {
       // required
@@ -146,7 +164,9 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
           (accu, layer, idx) => ({
             ...accu,
             [layer.id]:
-              layer.shouldRenderLayer(layerData[idx]) && this._isVisibleMapLayer(layer, mapLayers)
+              layer.id !== GEOCODER_LAYER_ID &&
+              layer.shouldRenderLayer(layerData[idx]) &&
+              this._isVisibleMapLayer(layer, mapLayers)
           }),
           {}
         )
@@ -221,6 +241,12 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
       }
     };
 
+    _onDeckInitialized(gl) {
+      if (this.props.onDeckInitialized) {
+        this.props.onDeckInitialized(this._deck, gl);
+      }
+    }
+
     _onBeforeRender = ({gl}) => {
       setLayerBlending(gl, this.props.layerBlending);
     };
@@ -244,54 +270,70 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
         return null;
       }
       // if clicked something, ignore hover behavior
-      const objectInfo = clicked || hoverInfo;
       let layerHoverProp = null;
-      let position = {x: mousePosition[0], y: mousePosition[1]};
+      let layerPinnedProp = null;
+      const position = {x: mousePosition[0], y: mousePosition[1]};
+      let pinnedPosition = {};
 
-      if (interactionConfig.tooltip.enabled && objectInfo && objectInfo.picked) {
-        // if anything hovered
-        const {object, layer: overlay} = objectInfo;
+      layerHoverProp = getLayerHoverProp({
+        interactionConfig,
+        hoverInfo,
+        layers,
+        layersToRender,
+        datasets
+      });
 
-        // deckgl layer to kepler-gl layer
-        const layer = layers[overlay.props.idx];
+      const compareMode = interactionConfig.tooltip.config
+        ? interactionConfig.tooltip.config.compareMode
+        : false;
 
-        if (layer.getHoverData && layersToRender[layer.id]) {
-          // if layer is visible and have hovered data
-          const {
-            config: {dataId}
-          } = layer;
-          const {allData, fields} = datasets[dataId];
-          const data = layer.getHoverData(object, allData);
-          const fieldsToShow = interactionConfig.tooltip.config.fieldsToShow[dataId];
+      const hasTooltip = pinned || clicked;
+      const hasComparisonTooltip = compareMode || (!clicked && !pinned);
 
-          layerHoverProp = {
-            data,
-            fields,
-            fieldsToShow,
-            layer
-          };
-        }
-      }
-
-      if (pinned || clicked) {
+      if (hasTooltip) {
         // project lnglat to screen so that tooltip follows the object on zoom
         const viewport = new WebMercatorViewport(mapState);
         const lngLat = clicked ? clicked.lngLat : pinned.coordinate;
-        position = this._getHoverXY(viewport, lngLat);
+        pinnedPosition = this._getHoverXY(viewport, lngLat);
+        layerPinnedProp = getLayerHoverProp({
+          interactionConfig,
+          hoverInfo: clicked,
+          layers,
+          layersToRender,
+          datasets
+        });
+        if (layerHoverProp) {
+          layerHoverProp.primaryData = layerPinnedProp.data;
+          layerHoverProp.compareType = interactionConfig.tooltip.config.compareType;
+        }
       }
+      const commonProp = {
+        onClose: this._onCloseMapPopover,
+        mapW: mapState.width,
+        mapH: mapState.height,
+        zoom: mapState.zoom
+      };
+
       return (
         <div>
-          <MapPopover
-            {...position}
-            layerHoverProp={layerHoverProp}
-            coordinate={
-              interactionConfig.coordinate.enabled && ((pinned || {}).coordinate || coordinate)
-            }
-            freezed={Boolean(clicked || pinned)}
-            onClose={this._onCloseMapPopover}
-            mapW={mapState.width}
-            mapH={mapState.height}
-          />
+          {hasTooltip && (
+            <MapPopover
+              {...pinnedPosition}
+              {...commonProp}
+              layerHoverProp={layerPinnedProp}
+              coordinate={interactionConfig.coordinate.enabled && (pinned || {}).coordinate}
+              frozen={Boolean(hasTooltip)}
+              isBase={compareMode}
+            />
+          )}
+          {hasComparisonTooltip && (
+            <MapPopover
+              {...position}
+              {...commonProp}
+              layerHoverProp={layerHoverProp}
+              coordinate={interactionConfig.coordinate.enabled && coordinate}
+            />
+          )}
         </div>
       );
     }
@@ -391,6 +433,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
               this._deck = comp.deck;
             }
           }}
+          onWebGLInitialized={gl => this._onDeckInitialized(gl)}
         />
       );
     }
@@ -440,6 +483,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
         uiState,
         uiStateActions,
         visStateActions,
+        interactionConfig,
         editor,
         index
       } = this.props;
@@ -461,6 +505,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
       };
 
       const isEdit = uiState.mapControls.mapDraw.active;
+      const hasGeocoderLayer = layers.find(l => l.id === GEOCODER_LAYER_ID);
 
       return (
         <StyledMapContainer style={MAP_STYLE.container}>
@@ -475,7 +520,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
             mapControls={mapControls}
             readOnly={this.props.readOnly}
             scale={mapState.scale || 1}
-            top={0}
+            top={interactionConfig.geocoder && interactionConfig.geocoder.enabled ? 52 : 0}
             editor={editor}
             locale={uiState.locale}
             onTogglePerspective={mapStateActions.togglePerspective}
@@ -516,13 +561,15 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
               }}
             />
           </MapComponent>
-          {mapStyle.topMapStyle && (
+          {mapStyle.topMapStyle || hasGeocoderLayer ? (
             <div style={MAP_STYLE.top}>
-              <MapComponent {...mapProps} key="top" mapStyle={mapStyle.topMapStyle} />
+              <MapComponent {...mapProps} key="top" mapStyle={mapStyle.topMapStyle}>
+                {this._renderDeckOverlay({[GEOCODER_LAYER_ID]: true})}
+              </MapComponent>
             </div>
-          )}
+          ) : null}
           {this._renderMapPopover(layersToRender)}
-          <Attribution/>
+          <Attribution />
         </StyledMapContainer>
       );
     }

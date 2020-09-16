@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import React, {Component} from 'react';
+import React, {Component, createRef} from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
 import styled from 'styled-components';
@@ -27,8 +27,9 @@ import MouseEventHandler from './mouse-event';
 const StyledSliderHandle = styled.span`
   position: absolute;
   z-index: 10;
-  margin-${props => (props.vertical ? 'left' : 'top')}: -${props =>
+  ${props => (props.vertical ? 'margin-left' : 'margin-top')}: -${props =>
   (props.sliderHandleWidth - props.theme.sliderBarHeight) / 2}px;
+
   height: ${props =>
     Number.isFinite(props.sliderHandleWidth)
       ? props.sliderHandleWidth
@@ -39,7 +40,10 @@ const StyledSliderHandle = styled.span`
       : props.theme.sliderHandleHeight}px;
   box-shadow: ${props => props.theme.sliderHandleShadow};
   background-color: ${props => props.theme.sliderHandleColor};
+  color: ${props => props.theme.sliderHandleTextColor};
+
   border-width: 1px;
+  border-radius: ${props => props.theme.sliderBorderRadius};
   border-style: solid;
   border-color: ${props =>
     props.active ? props.theme.selectBorderColor : props.theme.sliderHandleColor};
@@ -47,6 +51,14 @@ const StyledSliderHandle = styled.span`
   :hover {
     background-color: ${props => props.theme.sliderHandleHoverColor};
     cursor: pointer;
+  }
+
+  line-height: 10px;
+  font-size: 6px;
+  padding: 0 3px;
+  letter-spacing: 1px;
+  :after {
+    content: '${props => props.theme.sliderHandleAfterContent}';
   }
 `;
 
@@ -125,11 +137,13 @@ export default class SliderHandle extends Component {
     this.mouseEvent = new MouseEventHandler({
       vertical: props.vertical,
       valueListener: props.valueListener,
-      toggleMouseOver: this.toggleMouseOver
+      toggleMouseOver: this.toggleMouseOver,
+      track: props.track
     });
   }
 
   state = {mouseOver: false};
+  ref = createRef();
 
   toggleMouseOver = () => {
     this.setState({mouseOver: !this.state.mouseOver});
@@ -151,6 +165,7 @@ export default class SliderHandle extends Component {
           className={classnames('kg-range-slider__handle', {
             'kg-range-slider__handle--active': this.state.mouseOver
           })}
+          ref={this.ref}
           sliderHandleWidth={this.props.sliderHandleWidth}
           active={this.state.mouseOver}
           vertical={this.props.vertical}
