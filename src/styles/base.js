@@ -42,6 +42,7 @@ export const labelColorLT = '#6A7485';
 
 export const textColor = '#A0A7B4';
 export const textColorLT = '#3A414C';
+export const dataTableTextColor = textColorLT;
 export const titleColorLT = '#29323C';
 
 export const subtextColor = '#6A7485';
@@ -79,6 +80,12 @@ export const secondaryBtnActColor = '#FFFFFF';
 export const secondaryBtnBgdHover = '#A0A7B4';
 export const secondaryBtnBorder = '0';
 
+export const ctaBtnBgd = '#0F9668';
+export const ctaBtnBgdHover = '#13B17B';
+export const ctaBtnActBgd = '#13B17B';
+export const ctaBtnColor = '#FFFFFF';
+export const ctaBtnActColor = '#FFFFFF';
+
 export const linkBtnBgd = 'transparent';
 export const linkBtnActBgd = linkBtnBgd;
 export const linkBtnColor = '#A0A7B4';
@@ -89,6 +96,7 @@ export const linkBtnBorder = '0';
 export const negativeBtnBgd = errorColor;
 export const negativeBtnActBgd = '#FF193E';
 export const negativeBtnBgdHover = '#FF193E';
+export const negativeBtnBorder = '0';
 export const negativeBtnColor = '#FFFFFF';
 export const negativeBtnActColor = '#FFFFFF';
 
@@ -122,15 +130,22 @@ export const inputFontWeight = 500;
 export const inputBgd = '#29323C';
 export const inputBgdHover = '#3A414C';
 export const inputBgdActive = '#3A414C';
+export const inputBgdActiveLT = '#FFFFFF';
+
 export const inputBorderColor = '#29323C';
 export const inputBorderHoverColor = '#3A414C';
-export const inputBorderActiveColor = '#D3D8E0';
+export const inputBorderHoverColorLT = subtextColor;
+export const inputBorderActiveColor = '#3A414C';
+export const inputBorderActiveColorLT = textColorLT;
+
 export const inputColor = '#A0A7B4';
 export const inputBorderRadius = '1px';
 export const inputPlaceholderColor = '#6A7485';
+export const inputPlaceholderColorLT = subtextColorLT;
 export const inputPlaceholderFontWeight = 400;
 export const inputBoxShadow = 'none';
 export const inputBoxShadowActive = 'none';
+export const inputBoxShadowActiveLT = 'none';
 export const secondaryInputBgd = '#242730';
 export const secondaryInputBgdHover = '#3A414C';
 export const secondaryInputBgdActive = '#3A414C';
@@ -149,6 +164,7 @@ export const selectFontWeight = '400';
 export const selectFontWeightBold = '500';
 
 export const selectColorPlaceHolder = '#6A7485';
+export const selectColorPlaceHolderLT = selectColorLT;
 export const selectBackground = inputBgd;
 export const selectBackgroundHover = inputBgdHover;
 export const selectBackgroundLT = '#FFFFFF';
@@ -157,7 +173,7 @@ export const selectBorderColor = '#D3D8E0';
 export const selectBorderColorLT = '#D3D8E0';
 export const selectBorderRadius = '1px';
 export const selectBorder = 0;
-
+export const panelTabColor = subtextColor;
 export const dropdownListHighlightBg = '#6A7485';
 export const dropdownListHighlightBgLT = '#F8F8F9';
 export const dropdownListShadow = '0 6px 12px 0 rgba(0,0,0,0.16)';
@@ -172,6 +188,7 @@ export const dropdownListBorderTopLT = '#D3D8E0';
 export const dropdownListLineHeight = 20;
 export const dropdownWrapperZ = 100;
 export const dropdownWapperMargin = 4;
+
 // Switch
 export const switchWidth = 24;
 export const switchHeight = 12;
@@ -200,6 +217,13 @@ export const checkboxBorderColorLT = selectBorderColorLT;
 export const checkboxBoxBgd = 'white';
 export const checkboxBoxBgdChecked = primaryBtnBgd;
 
+// Radio
+export const radioRadius = 8;
+export const radioBorderRadius = 100;
+export const radioBorderColor = 'transparent';
+export const radioButtonRadius = 4;
+export const radioButtonBgdColor = switchBtnBgdActive;
+
 // Side Panel
 export const sidePanelHeaderBg = '#29323C';
 export const sidePanelHeaderBorder = 'transparent';
@@ -222,7 +246,7 @@ export const panelContentBackground = '#292E36';
 export const panelBackgroundHover = '#3A4552';
 export const panelHeaderBorderRadius = '0px';
 export const chickletBgd = '#3A4552';
-export const chickletBgdLT = '#6A7485';
+export const chickletBgdLT = '#D3D8E0';
 export const panelHeaderIcon = '#6A7485';
 export const panelHeaderIconActive = '#A0A7B4';
 export const panelHeaderIconHover = textColorHl;
@@ -295,7 +319,7 @@ export const sliderHandleHeight = 12;
 export const sliderHandleWidth = 12;
 export const sliderHandleColor = '#D3D8E0';
 export const sliderHandleTextColor = sliderHandleColor;
-
+export const sliderInactiveBorderColor = sliderHandleColor;
 export const sliderBorderRadius = '0';
 
 export const sliderHandleHoverColor = '#FFFFFF';
@@ -307,6 +331,7 @@ export const sliderInputFontSize = '10px';
 export const sliderInputPadding = '4px 6px';
 export const sliderMarginTopIsTime = -12;
 export const sliderMarginTop = 12;
+export const sliderMarginBottom = 12;
 
 // Geocoder
 export const geocoderWidth = 360;
@@ -318,6 +343,15 @@ export const geocoderInputHeight = 36;
 export const rangeBrushBgd = '#3A414C';
 export const histogramFillInRange = activeColor;
 export const histogramFillOutRange = sliderBarColor;
+export const axisFontSize = '10px';
+export const axisFontColor = textColor;
+export const timeTitleFontSize = '10px';
+export const rangePlotMargin = {top: 12, bottom: 0, left: 0, right: 0};
+export const rangePlotMarginLarge = {top: 18, bottom: 0, left: 0, right: 0};
+export const rangePlotH = 62;
+export const rangePlotContainerH = 78;
+export const rangePlotHLarge = 102;
+export const rangePlotContainerHLarge = 120;
 
 // Notification
 export const notificationColors = {
@@ -407,6 +441,18 @@ export const breakPoints = {
 // all child components
 
 const input = css`
+  ::placeholder {
+    color: ${props => props.theme.inputPlaceholderColor};
+    font-weight: ${props => props.theme.inputPlaceholderFontWeight};
+  }
+
+  /* Disable Arrows on Number Inputs */
+  ::-webkit-inner-spin-button,
+  ::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   align-items: center;
   background-color: ${props => props.theme.inputBgd};
   border: 1px solid
@@ -425,6 +471,7 @@ const input = css`
       ? props.theme.inputFontSizeSmall
       : props.theme.inputFontSize};
   font-weight: ${props => props.theme.inputFontWeight};
+  font-family: ${props => props.theme.fontFamily};
   height: ${props =>
     props.size === 'small'
       ? props.theme.inputBoxHeightSmall
@@ -449,14 +496,6 @@ const input = css`
   opacity: ${props => (props.disabled ? 0.5 : 1)};
   box-shadow: ${props => props.theme.inputBoxShadow};
 
-  :hover {
-    cursor: ${props => (props.type === 'number' || props.type === 'text' ? 'text' : 'pointer')};
-    background-color: ${props =>
-      props.active ? props.theme.inputBgdActive : props.theme.inputBgdHover};
-    border-color: ${props =>
-      props.active ? props.theme.inputBorderActiveColor : props.theme.inputBorderHoverColor};
-  }
-
   :active,
   :focus,
   &.focus,
@@ -466,20 +505,20 @@ const input = css`
     box-shadow: ${props => props.theme.inputBoxShadowActive};
   }
 
-  ::placeholder {
-    color: ${props => props.theme.inputPlaceholderColor};
-    font-weight: ${props => props.theme.inputPlaceholderFontWeight};
-  }
-
-  /* Disable Arrows on Number Inputs */
-  ::-webkit-inner-spin-button,
-  ::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+  :hover {
+    cursor: ${props => (props.type === 'number' || props.type === 'text' ? 'text' : 'pointer')};
+    background-color: ${props =>
+      props.active ? props.theme.inputBgdActive : props.theme.inputBgdHover};
+    border-color: ${props =>
+      props.active ? props.theme.inputBorderActiveColor : props.theme.inputBorderHoverColor};
   }
 `;
 
 const inputLT = css`
+  ::placeholder {
+    color: ${props => props.theme.inputPlaceholderColorLT};
+    font-weight: 400;
+  }
   ${input}
 
   background-color: ${props => props.theme.selectBackgroundLT};
@@ -491,25 +530,22 @@ const inputLT = css`
       ? props.theme.errorColor
       : props.theme.selectBorderColorLT};
   color: ${props => props.theme.selectColorLT};
-  caret-color: ${props => props.theme.selectColorLT};
+  caret-color: ${props => props.theme.inputBorderActiveColorLT};
 
-  ::-webkit-input-placeholder {
-    color: ${props => props.theme.subtextColorLT};
-    font-weight: 400;
+  :hover {
+    background-color: ${props => props.theme.inputBgdActiveLT};
+    cursor: ${props => (['number', 'text'].includes(props.type) ? 'text' : 'pointer')};
+    border-color: ${props =>
+      props.active ? props.theme.inputBorderActiveColorLT : props.theme.inputBorderHoverColorLT};
   }
 
   :active,
   :focus,
   &.focus,
   &.active {
-    background-color: ${props => props.theme.selectBackgroundLT};
-    border-color: ${props => props.theme.textColorLT};
-  }
-
-  :hover {
-    background-color: ${props => props.theme.selectBackgroundLT};
-    cursor: ${props => (['number', 'text'].includes(props.type) ? 'text' : 'pointer')};
-    border-color: ${props => (props.active ? props.theme.textColorLT : props.theme.subtextColor)};
+    background-color: ${props => props.theme.inputBgdActiveLT};
+    border-color: ${props => props.theme.inputBorderActiveColorLT};
+    box-shadow: ${props => props.theme.inputBoxShadowActiveLT};
   }
 `;
 
@@ -549,13 +585,15 @@ const chickletedInputContainer = css`
 `;
 
 const chickletedInput = css`
-  ${props => props.theme.input}
-  ${props => props.theme.chickletedInputContainer}
+  ${props => props.theme.input} ${props => props.theme.chickletedInputContainer};
+`;
+
+const chickletedInputLT = css`
+  ${props => props.theme.inputLT} ${props => props.theme.chickletedInputContainer};
 `;
 
 const secondaryChickletedInput = css`
-  ${props => props.theme.secondaryInput}
-  ${props => props.theme.chickletedInputContainer}
+  ${props => props.theme.secondaryInput} ${props => props.theme.chickletedInputContainer};
 `;
 
 const inlineInput = css`
@@ -692,6 +730,36 @@ const inputCheckbox = css`
   }
 `;
 
+const inputRadio = css`
+  ${props => props.theme.inputCheckbox}
+  padding-left: ${props => props.theme.radioRadius * 2 + 8}px;
+  margin-bottom: 0;
+  margin-left: 0;
+  line-height: ${props => props.theme.radioRadius * 2}px;
+  color: ${props => props.theme.textColorHl};
+  cursor: pointer;
+
+  :before {
+    ${props => props.theme.checkboxBox}
+    width: ${props => props.theme.radioRadius * 2}px;
+    height: ${props => props.theme.radioRadius * 2}px;
+    border-radius: ${props => props.theme.radioBorderRadius}px;
+    background-color: ${props => props.theme.switchTrackBgd};
+    border-color: ${props => props.theme.radioBorderColor};
+  }
+
+  :after {
+    top: ${props => props.theme.radioRadius - props.theme.radioButtonRadius}px;
+    left: ${props => props.theme.radioRadius - props.theme.radioButtonRadius}px;
+    display: table;
+    width: ${props => props.theme.radioButtonRadius * 2}px;
+    height: ${props => props.theme.radioButtonRadius * 2}px;
+    border-radius: ${props => props.theme.radioButtonRadius * 2}px;
+    border: 0;
+    background-color: ${props => props.theme.radioButtonBgdColor};
+  }
+`;
+
 const secondarySwitch = css`
   ${props => props.theme.inputSwitch}
 
@@ -733,11 +801,37 @@ const dropdownScrollBar = css`
   }
 `;
 
+const dropdownScrollBarLT = css`
+  ${dropdownScrollBar} ::-webkit-scrollbar-corner {
+    background: ${props => props.theme.dropdownListBgdLT};
+  }
+
+  ::-webkit-scrollbar-track {
+    background: ${props => props.theme.dropdownListBgdLT};
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: ${props => props.theme.labelColorLT};
+    border: 3px solid ${props => props.theme.dropdownListBgdLT};
+  }
+
+  :vertical:hover {
+    background: ${props => props.theme.textColorHlLT};
+    cursor: pointer;
+  }
+`;
+
 const dropdownListAnchor = css`
   color: ${props => props.theme.selectColor};
   padding-left: 3px;
   font-size: ${props => props.theme.selectFontSize};
   line-height: ${props => props.theme.dropdownListLineHeight}px;
+`;
+
+const dropdownListAnchorLT = css`
+  ${dropdownListAnchor}
+  color: ${props => props.theme.selectColorLT};
 `;
 
 const dropdownListSize = css`
@@ -748,8 +842,7 @@ const dropdownListSize = css`
 `;
 
 const dropdownListItem = css`
-  ${dropdownListSize}
-  &.hover,
+  ${dropdownListSize} &.hover,
   &:hover {
     cursor: pointer;
     background-color: ${props => props.theme.dropdownListHighlightBg};
@@ -771,7 +864,7 @@ const dropdownListItemLT = css`
     background-color: ${props => props.theme.dropdownListHighlightBgLT};
 
     .list__item__anchor {
-      color: ${props => props.theme.textColorHlLT};
+      color: ${props => props.theme.selectColorLT};
     }
   }
 `;
@@ -813,10 +906,15 @@ const dropdownList = css`
 `;
 
 const dropdownListLT = css`
-  ${dropdownList}
-  .list__item {
+  ${dropdownList} .list__item {
     ${props => props.theme.dropdownListItemLT};
   }
+
+  .list__item__anchor {
+    ${props => props.theme.dropdownListAnchorLT};
+  }
+
+  ${props => props.theme.dropdownScrollBarLT};
 `;
 const sidePanelScrollBar = css`
   ::-webkit-scrollbar {
@@ -942,6 +1040,7 @@ export const theme = {
   inputLT,
   inlineInput,
   chickletedInput,
+  chickletedInputLT,
   chickletedInputContainer,
   secondaryChickletedInput,
 
@@ -950,11 +1049,13 @@ export const theme = {
 
   secondaryInput,
   dropdownScrollBar,
+  dropdownScrollBarLT,
   dropdownList,
   dropdownListLT,
   dropdownListItem,
   dropdownListItemLT,
   dropdownListAnchor,
+  dropdownListAnchorLT,
   dropdownListHeader,
   dropdownListSection,
   dropdownListShadow,
@@ -968,6 +1069,7 @@ export const theme = {
   switchTrack,
   switchButton,
   inputCheckbox,
+  inputRadio,
   checkboxBox,
   checkboxCheck,
 
@@ -1012,15 +1114,18 @@ export const theme = {
   selectBorderColorLT,
   selectColor,
   selectColorPlaceHolder,
+  selectColorPlaceHolderLT,
   selectFontSize,
   selectFontWeight,
   selectColorLT,
   selectFontWeightBold,
+  panelTabColor,
 
   // Input
   inputBgd,
   inputBgdHover,
   inputBgdActive,
+  inputBgdActiveLT,
   inputBoxHeight,
   inputBoxHeightSmall,
   inputBoxHeightTiny,
@@ -1036,10 +1141,11 @@ export const theme = {
   inputFontSizeSmall,
   inputFontWeight,
   inputPlaceholderColor,
+  inputPlaceholderColorLT,
   inputPlaceholderFontWeight,
   inputBoxShadow,
   inputBoxShadowActive,
-
+  inputBoxShadowActiveLT,
   secondaryInputBgd,
   secondaryInputBgdHover,
   secondaryInputBgdActive,
@@ -1075,6 +1181,13 @@ export const theme = {
   checkboxBoxBgd,
   checkboxBoxBgdChecked,
 
+  // Radio
+  radioRadius,
+  radioBorderRadius,
+  radioBorderColor,
+  radioButtonRadius,
+  radioButtonBgdColor,
+
   // Button
   btnFontFamily,
   primaryBtnBgd,
@@ -1098,6 +1211,7 @@ export const theme = {
   negativeBtnBgd,
   negativeBtnActBgd,
   negativeBtnBgdHover,
+  negativeBtnBorder,
   negativeBtnColor,
   negativeBtnActColor,
 
@@ -1115,6 +1229,12 @@ export const theme = {
   floatingBtnBorderHover,
   floatingBtnColor,
   floatingBtnActColor,
+
+  ctaBtnBgd,
+  ctaBtnBgdHover,
+  ctaBtnActBgd,
+  ctaBtnColor,
+  ctaBtnActColor,
 
   selectionBtnBgd,
   selectionBtnActBgd,
@@ -1168,6 +1288,7 @@ export const theme = {
 
   // Side Panel Panel
   chickletBgd,
+  chickletBgdLT,
   panelBackground,
   panelContentBackground,
   panelBackgroundHover,
@@ -1197,6 +1318,7 @@ export const theme = {
   lineHeight,
   textColor,
   textColorLT,
+  dataTableTextColor,
   textColorHl,
   titleTextColor,
   subtextColor,
@@ -1237,6 +1359,7 @@ export const theme = {
   sliderHandleWidth,
   sliderHandleColor,
   sliderHandleTextColor,
+  sliderInactiveBorderColor,
   sliderBorderRadius,
   sliderHandleHoverColor,
   sliderHandleAfterContent,
@@ -1245,6 +1368,7 @@ export const theme = {
   sliderInputWidth,
   sliderMarginTopIsTime,
   sliderMarginTop,
+  sliderMarginBottom,
 
   // Geocoder
   geocoderWidth,
@@ -1256,6 +1380,15 @@ export const theme = {
   rangeBrushBgd,
   histogramFillInRange,
   histogramFillOutRange,
+  axisFontSize,
+  axisFontColor,
+  timeTitleFontSize,
+  rangePlotMargin,
+  rangePlotMarginLarge,
+  rangePlotH,
+  rangePlotHLarge,
+  rangePlotContainerH,
+  rangePlotContainerHLarge,
 
   // Notifications
   notificationColors,
@@ -1343,7 +1476,7 @@ export const themeLT = {
   inputBgd: '#F7F7F7',
   inputBgdHover: '#FFFFFF',
   inputBgdActive: '#FFFFFF',
-
+  inputBgdActiveLT: '#FFFFFF',
   dropdownListHighlightBg: '#F0F0F0',
   toolbarItemIconHover: activeColorLT,
   panelBackground: '#F7F7F7',
@@ -1371,6 +1504,8 @@ export const themeLT = {
   sliderBarColor: '#A0A7B4',
   sliderBarBgd: '#D3D8E0',
   sliderHandleColor: '#F7F7F7',
+  sliderInactiveBorderColor: '#F7F7F7',
+  sliderHandleTextColor: '#F7F7F7',
   sliderHandleHoverColor: '#F7F7F7',
 
   subtextColor: subtextColorLT,
@@ -1400,7 +1535,8 @@ export const themeLT = {
 
   rangeBrushBgd: '#D3D8E0',
   histogramFillInRange: activeColorLT,
-  histogramFillOutRange: '#A0A7B4'
+  histogramFillOutRange: '#A0A7B4',
+  axisFontColor: textColorLT
 };
 
 export const themeBS = {
@@ -1431,6 +1567,10 @@ export const themeBS = {
   secondaryBtnActColor: '#000000',
   secondaryBtnBgd: '#E2E2E2',
   secondaryBtnBgdHover: '#CBCBCB',
+  ctnBtnBgd: '#E2E2E2',
+  ctnBtnBgdHover: '333333',
+  ctnBtnColor: '#000000',
+  ctnBtnActColor: '#000000',
 
   sideBarCloseBtnBgd: '#E2E2E2',
   sideBarCloseBtnColor: '#000000',
@@ -1452,6 +1592,7 @@ export const themeBS = {
   sidePanelBg: '#F6F6F6',
   sidePanelHeaderBg: '#FFFFFF',
   subtextColor: '#AFAFAF',
+  panelTabColor: '#AFAFAF',
   subtextColorActive: '#000000',
   textColor: '#000000',
   textColorHl: '#545454',
@@ -1469,5 +1610,7 @@ export const themeBS = {
   rangeBrushBgd: '#E2E2E2',
   sliderBarBgd: '#E2E2E2',
   sliderHandleColor: '#FFFFFF',
+  sliderInactiveBorderColor: '#FFFFFF',
+  sliderHandleTextColor: '#FFFFFF',
   sliderBarColor: '#000000'
 };

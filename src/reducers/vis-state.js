@@ -51,6 +51,8 @@ const actionHandler = {
 
   [ActionTypes.LAYER_COLOR_UI_CHANGE]: visStateUpdaters.layerColorUIChangeUpdater,
 
+  [ActionTypes.TOGGLE_LAYER_ANIMATION]: visStateUpdaters.toggleLayerAnimationUpdater,
+
   [ActionTypes.LOAD_FILES]: visStateUpdaters.loadFilesUpdater,
 
   [ActionTypes.LOAD_FILES_ERR]: visStateUpdaters.loadFilesErrUpdater,
@@ -77,6 +79,10 @@ const actionHandler = {
 
   [ActionTypes.SET_FILTER]: visStateUpdaters.setFilterUpdater,
 
+  [ActionTypes.SET_FILTER_ANIMATION_TIME]: visStateUpdaters.setFilterAnimationTimeUpdater,
+
+  [ActionTypes.SET_FILTER_ANIMATION_WINDOW]: visStateUpdaters.setFilterAnimationWindowUpdater,
+
   [ActionTypes.SET_FILTER_PLOT]: visStateUpdaters.setFilterPlotUpdater,
 
   [ActionTypes.SET_MAP_INFO]: visStateUpdaters.setMapInfoUpdater,
@@ -87,7 +93,7 @@ const actionHandler = {
 
   [ActionTypes.UPDATE_FILTER_ANIMATION_SPEED]: visStateUpdaters.updateFilterAnimationSpeedUpdater,
 
-  [ActionTypes.UPDATE_ANIMATION_TIME]: visStateUpdaters.updateAnimationTimeUpdater,
+  [ActionTypes.SET_LAYER_ANIMATION_TIME]: visStateUpdaters.setLayerAnimationTimeUpdater,
 
   [ActionTypes.UPDATE_LAYER_ANIMATION_SPEED]: visStateUpdaters.updateLayerAnimationSpeedUpdater,
 
@@ -98,6 +104,8 @@ const actionHandler = {
   [ActionTypes.UPDATE_LAYER_BLENDING]: visStateUpdaters.updateLayerBlendingUpdater,
 
   [ActionTypes.UPDATE_VIS_DATA]: visStateUpdaters.updateVisDataUpdater,
+
+  [ActionTypes.RENAME_DATASET]: visStateUpdaters.renameDatasetUpdater,
 
   [ActionTypes.SET_FEATURES]: visStateUpdaters.setFeaturesUpdater,
 
@@ -128,6 +136,7 @@ const actionHandler = {
 
 // construct vis-state reducer
 export const visStateReducerFactory = (initialState = {}) =>
+  // @ts-ignore
   handleActions(actionHandler, {
     ...visStateUpdaters.INITIAL_VIS_STATE,
     ...initialState,

@@ -35,6 +35,7 @@ const dgSettings = {
 const StyledModal = styled.div`
   min-height: 70vh;
   overflow: hidden;
+  display: flex;
 `;
 
 const DatasetCatalog = styled.div`
@@ -82,8 +83,8 @@ const TableContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  min-height: 70vh;
-  max-height: 70vh;
+  min-height: 100%;
+  max-height: 100%;
 `;
 
 function DataTableModalFactory(DataTable) {
@@ -95,18 +96,22 @@ function DataTableModalFactory(DataTable) {
     columns = createSelector(this.fields, fields => fields.map(f => f.name));
     colMeta = createSelector(this.fields, fields =>
       fields.reduce(
-        (acc, {name, type}) => ({
+        (acc, {name, displayName, type}) => ({
           ...acc,
-          [name]: type
+          [name]: {
+            name: displayName || name,
+            type
+          }
         }),
         {}
       )
     );
+
     cellSizeCache = createSelector(this.dataId, this.datasets, (dataId, datasets) => {
-      if (!this.props.datasets[dataId]) {
+      if (!datasets[dataId]) {
         return {};
       }
-      const {fields, allData} = this.props.datasets[dataId];
+      const {fields, allData} = datasets[dataId];
 
       let showCalculate = null;
       if (!this.datasetCellSizeCache[dataId]) {
@@ -147,12 +152,26 @@ function DataTableModalFactory(DataTable) {
       return cellSizeCache;
     });
 
+    copyTableColumn = column => {
+      const {dataId, copyTableColumn} = this.props;
+      copyTableColumn(dataId, column);
+    };
+
+    pinTableColumn = column => {
+      const {dataId, pinTableColumn} = this.props;
+      pinTableColumn(dataId, column);
+    };
+
+    sortTableColumn = (column, mode) => {
+      const {dataId, sortTableColumn} = this.props;
+      sortTableColumn(dataId, column, mode);
+    };
+
     render() {
-      const {datasets, dataId, showDatasetTable} = this.props;
+      const {datasets, dataId, showDatasetTable, showTab} = this.props;
       if (!datasets || !dataId) {
         return null;
       }
-
       const activeDataset = datasets[dataId];
       const columns = this.columns(this.props);
       const colMeta = this.colMeta(this.props);
@@ -162,15 +181,16 @@ function DataTableModalFactory(DataTable) {
         <StyledModal className="dataset-modal" id="dataset-modal">
           <CanvasHack />
           <TableContainer>
-            <DatasetTabs
-              activeDataset={activeDataset}
-              datasets={datasets}
-              showDatasetTable={showDatasetTable}
-            />
+            {showTab ? (
+              <DatasetTabs
+                activeDataset={activeDataset}
+                datasets={datasets}
+                showDatasetTable={showDatasetTable}
+              />
+            ) : null}
             {datasets[dataId] ? (
               <DataTable
                 key={dataId}
-                dataId={dataId}
                 columns={columns}
                 colMeta={colMeta}
                 cellSizeCache={cellSizeCache}
@@ -178,9 +198,9 @@ function DataTableModalFactory(DataTable) {
                 pinnedColumns={activeDataset.pinnedColumns}
                 sortOrder={activeDataset.sortOrder}
                 sortColumn={activeDataset.sortColumn}
-                copyTableColumn={this.props.copyTableColumn}
-                pinTableColumn={this.props.pinTableColumn}
-                sortTableColumn={this.props.sortTableColumn}
+                copyTableColumn={this.copyTableColumn}
+                pinTableColumn={this.pinTableColumn}
+                sortTableColumn={this.sortTableColumn}
               />
             ) : null}
           </TableContainer>
@@ -188,7 +208,9 @@ function DataTableModalFactory(DataTable) {
       );
     }
   }
-
+  DataTableModal.defaultProps = {
+    showTab: true
+  };
   return withTheme(DataTableModal);
 }
 

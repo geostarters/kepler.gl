@@ -49,13 +49,13 @@ const StyledSortableItem = styled.div`
   :not(.sorting) {
     :hover {
       background-color: ${props => props.theme.panelBackgroundHover};
-      ${dragHandleActive}
+      ${dragHandleActive};
     }
   }
 
   &.sorting-colors {
     background-color: ${props => props.theme.panelBackgroundHover};
-    ${dragHandleActive}
+    ${dragHandleActive};
   }
 `;
 
@@ -248,7 +248,7 @@ class CustomPalette extends Component {
                     e.stopPropagation();
                   }}
                   onChange={e => this._inputColorHex(index, e)}
-                  id="input-layer-label"
+                  id={`input-layer-label-${index}`}
                 />
               </StyledInlineInput>
               <StyledTrash onClick={() => this._onColorDelete(index)}>

@@ -26,6 +26,7 @@ export default {
     label: 'etiqueta',
     fillColor: 'color de relleno',
     color: 'color',
+    coverage: 'cobertura',
     strokeColor: 'color de trazo',
     radius: 'radio',
     outline: 'contorno',
@@ -121,6 +122,7 @@ export default {
     }
   },
   layerVisConfigs: {
+    angle: 'Ángulo',
     strokeWidth: 'Ancho del trazo',
     strokeWidthRange: 'Rango del ancho del trazo',
     radius: 'Radio',
@@ -203,7 +205,13 @@ export default {
     delete: 'Borrar',
     timePlayback: 'Reproducción de tiempo',
     cloudStorage: 'Almacenaje en la nube',
-    '3DMap': 'Mapa 3D'
+    '3DMap': 'Mapa 3D',
+    animationByWindow: 'Ventana Temporal Móvil',
+    animationByIncremental: 'Ventana Temporal Incremental',
+    speed: 'velocidad',
+    play: 'iniciar',
+    pause: 'pausar',
+    reset: 'reiniciar'
   },
   toolbar: {
     exportImage: 'Exportar imagen',
@@ -378,7 +386,8 @@ export default {
   interactions: {
     tooltip: 'Sugerencias',
     brush: 'Pincel',
-    coordinate: 'Coordenadas'
+    coordinate: 'Coordenadas',
+    geocoder: 'Geocodificador'
   },
   layerBlending: {
     title: 'Combinación de capas',
@@ -404,7 +413,8 @@ export default {
     },
     hexagon: {
       worldUnitSize: 'Radio de hexágono (km)'
-    }
+    },
+    hex_id: 'id hex'
   },
   color: {
     customPalette: 'Paleta personalizada',
@@ -431,6 +441,24 @@ export default {
     uploading: 'Cargando',
     fileNotSupported: 'El archivo {errorFiles} no es compatible.',
     or: 'o'
+  },
+  geocoder: {
+    title: 'Introduce una dirección'
+  },
+  fieldSelector: {
+    clearAll: 'Quitar todos',
+    formatting: 'Formato'
+  },
+  compare: {
+    modeLabel: 'Modo Comparación',
+    typeLabel: 'Tipo de Comparación',
+    types: {
+      absolute: 'Absoluta',
+      relative: 'Relativa'
+    }
+  },
+  mapPopover: {
+    primary: 'Principal'
   },
   density: 'densidad',
   'Bug Report': 'Informe de errores',

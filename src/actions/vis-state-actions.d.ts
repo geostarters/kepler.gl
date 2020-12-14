@@ -124,6 +124,30 @@ export function setFilter(
   valueIndex: number
 ): Merge<SetFilterUpdaterAction, {type: ActionTypes.SET_FILTER}>;
 
+
+export type SetFilterAnimationTimeUpdaterAction = {
+  idx: number;
+  prop: string;
+  value: any;
+  valueIndex?: number;
+};
+export function setFilterAnimationTime(
+  idx: number,
+  prop: string,
+  value: any,
+  valueIndex?: number
+): Merge<SetFilterAnimationTimeUpdaterAction, {type: ActionTypes.SET_FILTER_ANIMATION_TIME}>;
+
+export type SetFilterAnimationWindowUpdaterAction = {
+  id: string;
+  animationWindow: string;
+};
+export function setFilterAnimationWindow({
+  id: string,
+  animationWindow: string,
+}): Merge<SetFilterAnimationWindowUpdaterAction, {type: ActionTypes.SET_FILTER_ANIMATION_WINDOW}>;
+
+
 export type AddFilterUpdaterAction = {
   dataId: string;
 };
@@ -219,6 +243,15 @@ export function updateVisData(
   config: AddDataToMapPayload['config']
 ): Merge<UpdateVisDataUpdaterAction, {type: ActionTypes.UPDATE_VIS_DATA}>;
 
+export type RenameDatasetUpdaterAction = {
+  dataId: string;
+  label: string;
+};
+export function renameDataset(
+  dataId: string, 
+  label: string
+): Merge<RenameDatasetUpdaterAction, {type: ActionTypes.RENAME_DATASET}>;
+
 export type ToggleFilterAnimationUpdaterAction = {
   idx;
 };
@@ -238,12 +271,12 @@ export function updateFilterAnimationSpeed(
   {type: ActionTypes.UPDATE_FILTER_ANIMATION_SPEED}
 >;
 
-export type UpdateAnimationTimeUpdaterAction = {
+export type SetLayerAnimationTimeUpdaterAction = {
   value: number;
 };
-export function updateAnimationTime(
+export function setLayerAnimationTime(
   value: number
-): Merge<UpdateAnimationTimeUpdaterAction, {type: ActionTypes.UPDATE_ANIMATION_TIME}>;
+): Merge<SetLayerAnimationTimeUpdaterAction, {type: ActionTypes.SET_LAYER_ANIMATION_TIME}>;
 
 export type UpdateLayerAnimationSpeedUpdaterAction = {
   speed: number;
@@ -251,6 +284,13 @@ export type UpdateLayerAnimationSpeedUpdaterAction = {
 export function updateLayerAnimationSpeed(
   speed: number
 ): Merge<UpdateLayerAnimationSpeedUpdaterAction, {type: ActionTypes.UPDATE_LAYER_ANIMATION_SPEED}>;
+
+export type ToggleLayerAnimationUpdaterAction = {
+  idx;
+};
+export function toggleLayerAnimation(
+  idx: number
+): Merge<ToggleLayerAnimationUpdaterAction, {type: ActionTypes.TOGGLE_LAYER_ANIMATION}>;
 
 export type EnlargeFilterUpdaterAction = {
   idx: number;

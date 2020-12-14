@@ -20,7 +20,7 @@
 
 import {hexToRgb} from './color-utils';
 import uniq from 'lodash.uniq';
-import {TRIP_POINT_FIELDS, SORT_ORDER} from 'constants/default-settings';
+import {ALL_FIELD_TYPES, TRIP_POINT_FIELDS, SORT_ORDER} from 'constants/default-settings';
 import {generateHashId} from './utils';
 import {validateInputData} from 'processors/data-processor';
 import {getGpuFilterProps} from 'utils/gpu-filter-utils';
@@ -54,7 +54,7 @@ function* generateColor() {
 export const datasetColorMaker = generateColor();
 
 /** @type {typeof import('./dataset-utils').getNewDatasetColor} */
-function getNewDatasetColor(datasets) {
+export function getNewDatasetColor(datasets) {
   const presetColors = datasetColors.map(String);
   const usedColors = uniq(Object.values(datasets).map(d => String(d.color))).filter(c =>
     presetColors.includes(c)
@@ -77,7 +77,7 @@ function getNewDatasetColor(datasets) {
  * Take datasets payload from addDataToMap, create datasets entry save to visState
  * @type {typeof import('./dataset-utils').createNewDataEntry}
  */
-export function createNewDataEntry({info, data}, datasets = {}) {
+export function createNewDataEntry({info, data, metadata}, datasets = {}) {
   const validatedData = validateInputData(data);
   if (!validatedData) {
     return {};
@@ -101,6 +101,11 @@ export function createNewDataEntry({info, data}, datasets = {}) {
   }));
 
   const allIndexes = allData.map((_, i) => i);
+  const defaultMetadata = {
+    id: datasetInfo.id,
+    format: datasetInfo.format || '',
+    label: datasetInfo.label || ''
+  };
   return {
     [dataId]: {
       ...datasetInfo,
@@ -112,7 +117,8 @@ export function createNewDataEntry({info, data}, datasets = {}) {
       filteredIndexForDomain: allIndexes,
       fieldPairs: findPointFieldPairs(fields),
       fields,
-      gpuFilter: getGpuFilterProps([], dataId, fields)
+      gpuFilter: getGpuFilterProps([], dataId, fields),
+      metadata: {...defaultMetadata, ...metadata}
     }
   };
 }
@@ -206,4 +212,31 @@ export function sortDatasetByColumn(dataset, column, mode) {
     },
     sortOrder
   };
+}
+
+/**
+ * Choose a field to use as the default color field of a layer.
+ *
+ * Right now this implements a very simple heuristic looking
+ * for a real-type field that is not lat/lon.
+ *
+ * In the future we could consider other things:
+ * Consider integer fields
+ * look for highest dynamic range (using a sample of the data)
+ * Look for particular names to select ("value", "color", etc)
+ * Look for particular names to avoid ("" - the Pandas index column)
+ *
+ * @param dataset
+ */
+export function findDefaultColorField({fields, fieldPairs = []}) {
+  const defaultField = fields.find(
+    f =>
+      f.type === ALL_FIELD_TYPES.real &&
+      // Do not permit lat, lon fields
+      !fieldPairs.find(pair => pair.pair.lat.value === f.name || pair.pair.lng.value === f.name)
+  );
+  if (!defaultField) {
+    return null;
+  }
+  return defaultField;
 }

@@ -31,7 +31,11 @@ const StyledSwitchInput = styled.label`
 `;
 
 const StyledCheckboxInput = styled.label`
-  ${props => props.theme.inputCheckbox}
+  ${props => props.theme.inputCheckbox};
+`;
+
+const StyledRadiuInput = styled.label`
+  ${props => props.theme.inputRadio};
 `;
 
 const HiddenInput = styled.input`
@@ -42,7 +46,7 @@ const HiddenInput = styled.input`
 const StyledCheckbox = styled.div`
   display: flex;
   min-height: ${props => props.theme.switchHeight}px;
-  margin-left: ${props => props.theme.switchLabelMargin}px;
+  margin-left: ${props => (props.type === 'radio' ? 0 : props.theme.switchLabelMargin)}px;
 `;
 
 export default class Checkbox extends Component {
@@ -98,9 +102,18 @@ export default class Checkbox extends Component {
       htmlFor: this.props.id
     };
 
-    const LabelElement = this.props.type === 'checkbox' ? StyledCheckboxInput : StyledSwitchInput;
+    const LabelElement =
+      this.props.type === 'checkbox'
+        ? StyledCheckboxInput
+        : this.props.type === 'radio'
+        ? StyledRadiuInput
+        : StyledSwitchInput;
+
     return (
-      <StyledCheckbox className={classnames('kg-checkbox', this.props.className)}>
+      <StyledCheckbox
+        type={this.props.type}
+        className={classnames('kg-checkbox', this.props.className)}
+      >
         <HiddenInput {...inputProps} />
         <LabelElement className="kg-checkbox__label" {...labelProps}>
           {this.props.label}

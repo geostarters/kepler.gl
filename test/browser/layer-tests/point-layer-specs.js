@@ -25,6 +25,7 @@ import {
   testCreateCases,
   testFormatLayerDataCases,
   testRenderLayerCases,
+  testUpdateLayer,
   preparedDataset,
   dataId,
   testRows,
@@ -394,6 +395,72 @@ test('#PointLayer -> formatLayerData', t => {
           'getRadius should return corrent radius'
         );
       }
+    },
+    {
+      name: 'Test gps point.2 Data with fixed radius and null SizeField',
+      layer: {
+        type: 'point',
+        id: 'test_layer_2',
+        config: {
+          dataId,
+          label: 'some point file',
+          columns: {
+            lat: 'lat',
+            lng: 'lng'
+          },
+          color: [10, 10, 10],
+          visConfig: {
+            outline: true,
+            fixedRadius: true
+          },
+          // size by id(integer)
+          sizeField: null
+        }
+      },
+      datasets: {
+        [dataId]: {
+          ...preparedDataset,
+          filteredIndex
+        }
+      },
+      assert: result => {
+        const {layerData, layer} = result;
+
+        const expectedLayerData = {
+          data: [
+            {
+              data: testRows[0],
+              index: 0,
+              position: [testRows[0][2], testRows[0][1], 0]
+            },
+            {
+              data: testRows[4],
+              index: 4,
+              position: [testRows[4][2], testRows[4][1], 0]
+            }
+          ],
+          getFilterValue: () => {},
+          getLineColor: () => {},
+          getFillColor: () => {},
+          getRadius: () => {},
+          getPosition: () => {},
+          textLabels: []
+        };
+
+        t.deepEqual(
+          Object.keys(layerData).sort(),
+          Object.keys(expectedLayerData).sort(),
+          'layerData should have 6 keys'
+        );
+        t.deepEqual(
+          layerData.data,
+          expectedLayerData.data,
+          'should format correct point layerData data'
+        );
+        t.deepEqual(layer.config.sizeDomain, [0, 1], 'should update layer sizeDomain');
+        // getRadius should be a constant because sizeField is null
+        t.equal(layerData.getRadius, 1, 'getRadius should return current radius');
+      }
     }
   ];
 
@@ -630,5 +697,48 @@ test('#PointLayer -> renderLayer', t => {
   ];
 
   testRenderLayerCases(t, PointLayer, TEST_CASES);
+  t.end();
+});
+
+test('#PointLayer -> updateLayer', t => {
+  const layerConfig = {
+    id: 'test1',
+    type: 'point',
+    config: {
+      dataId,
+      label: 'some point file',
+      columns: {
+        lat: 'lat',
+        lng: 'lng'
+      },
+      visConfig: {
+        outline: true,
+        filled: true,
+        colorRange: {
+          colors: ['#010101', '#020202', '#030303']
+        },
+        strokeColor: [4, 5, 6]
+      }
+    },
+    visualChannels: {
+      // color by id(integer)
+      colorField: {
+        type: 'string',
+        name: 'types'
+      },
+      // size by id(integer)
+      sizeField: {
+        type: 'integer',
+        name: 'id'
+      }
+    }
+  };
+
+  const shouldUpdate = {
+    gpuFilter: {},
+    dynamicGpuFilter: {instanceRadius: true}
+  };
+
+  testUpdateLayer(t, {layerConfig, shouldUpdate});
   t.end();
 });

@@ -18,41 +18,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {_BinSorter as BinSorter} from '@deck.gl/aggregation-layers';
+import test from 'tape';
+import {isValidMapInfo} from 'utils/map-info-utils';
 
-export default class EnhancedBinSorter extends BinSorter {
-  getValueRange(percentileRange) {
-    if (!this.sortedBins) {
-      this.sortedBins = this.aggregatedBins.sort((a, b) =>
-        a.value > b.value ? 1 : a.value < b.value ? -1 : 0
-      );
-    }
-    if (!this.sortedBins.length) {
-      return [];
-    }
-    let lowerIdx = 0;
-    let upperIdx = this.sortedBins.length - 1;
-
-    if (Array.isArray(percentileRange)) {
-      const idxRange = this._percentileToIndex(percentileRange);
-      lowerIdx = idxRange[0];
-      upperIdx = idxRange[1];
-    }
-
-    return [this.sortedBins[lowerIdx].value, this.sortedBins[upperIdx].value];
-  }
-
-  getValueDomainByScale(scale, [lower = 0, upper = 100] = []) {
-    if (!this.sortedBins) {
-      this.sortedBins = this.aggregatedBins.sort((a, b) =>
-        a.value > b.value ? 1 : a.value < b.value ? -1 : 0
-      );
-    }
-    if (!this.sortedBins.length) {
-      return [];
-    }
-    const indexEdge = this._percentileToIndex([lower, upper]);
-
-    return this._getScaleDomain(scale, indexEdge);
-  }
-}
+test('mapInfoUtils -> isValidMapInfo', t => {
+  t.equal(
+    isValidMapInfo({title: 'example', description: ''}),
+    true,
+    'Should validate map info with no description'
+  );
+  t.equal(
+    isValidMapInfo({title: 'example', description: 'this is a map'}),
+    true,
+    'Should validate map info with description'
+  );
+  t.equal(
+    isValidMapInfo({
+      title:
+        'this is a really long title for a map that is not going to work because i really do not like this kind of long title',
+      description: 'this is a map'
+    }),
+    false,
+    'Should validate map with a really long title'
+  );
+  t.equal(
+    isValidMapInfo({
+      description:
+        'this is a really long description for a map that is not going to work because i really do not like this kind of long title',
+      title: 'this is a map'
+    }),
+    false,
+    'Should validate map with a really long description'
+  );
+  t.end();
+});

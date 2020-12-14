@@ -21,15 +21,18 @@
 import {ascending, extent, histogram as d3Histogram, ticks} from 'd3-array';
 import keyMirror from 'keymirror';
 import get from 'lodash.get';
+import isEqual from 'lodash.isequal';
+
 import booleanWithin from '@turf/boolean-within';
 import {point as turfPoint} from '@turf/helpers';
 import {Decimal} from 'decimal.js';
-import {ALL_FIELD_TYPES, FILTER_TYPES} from 'constants/default-settings';
+import {ALL_FIELD_TYPES, FILTER_TYPES, ANIMATION_WINDOW} from 'constants/default-settings';
 import {maybeToDate, notNullorUndefined, unique, timeToUnixMilli} from './data-utils';
 import * as ScaleUtils from './data-scale-utils';
-import {LAYER_TYPES} from '../constants';
+import {LAYER_TYPES} from 'layers/types';
 import {generateHashId, set, toArray} from './utils';
 import {getGpuFilterProps, getDatasetFieldIndexForFilter} from './gpu-filter-utils';
+import {getCentroid, h3IsValid} from 'layers/h3-hexagon-layer/h3-utils';
 
 // TYPE
 /** @typedef {import('../reducers/vis-state-updaters').FilterRecord} FilterRecord */
@@ -103,6 +106,7 @@ export const DEFAULT_FILTER_STRUCTURE = {
   fixedDomain: false,
   enlarged: false,
   isAnimating: false,
+  animationWindow: ANIMATION_WINDOW.free,
   speed: 1,
 
   // field specific
@@ -234,6 +238,9 @@ export function validateFilter(dataset, filter) {
   }
 
   updatedFilter.value = adjustValueToFilterDomain(filter.value, updatedFilter);
+  updatedFilter.enlarged =
+    typeof filter.enlarged === 'boolean' ? filter.enlarged : updatedFilter.enlarged;
+
   if (updatedFilter.value === null) {
     // cannot adjust saved value to filter
     return failed;
@@ -401,6 +408,22 @@ export const getPolygonFilterFunctor = (layer, filter) => {
           ].every(point => isInPolygon(point, filter.value))
         );
       };
+    case LAYER_TYPES.hexagonId:
+      if (layer.dataToFeature && layer.dataToFeature.centroids) {
+        return (data, index) => {
+          // null or getCentroid({id})
+          const centroid = layer.dataToFeature.centroids[index];
+          return centroid && isInPolygon(centroid, filter.value);
+        };
+      }
+      return data => {
+        const id = getPosition({data});
+        if (!h3IsValid(id)) {
+          return false;
+        }
+        const pos = getCentroid({id});
+        return pos.every(Number.isFinite) && isInPolygon(pos, filter.value);
+      };
     default:
       return () => true;
   }
@@ -445,7 +468,7 @@ export function getFilterFunction(field, dataId, filter, layers) {
         .filter(l => l && l.config.dataId === dataId)
         .map(layer => getPolygonFilterFunctor(layer, filter));
 
-      return data => layerFilterFunctions.every(filterFunc => filterFunc(data));
+      return (data, index) => layerFilterFunctions.every(filterFunc => filterFunc(data, index));
     default:
       return defaultFunc;
   }
@@ -949,9 +972,10 @@ export function applyFilterFieldName(filter, dataset, fieldName, filterDatasetIn
 
   // TODO: validate field type
   const field = fields[fieldIndex];
-  const filterProps = field.hasOwnProperty('filterProps')
-    ? field.filterProps
-    : getFilterProps(allData, field);
+  const filterProps =
+    field.hasOwnProperty('filterProps') && field.filterProps
+      ? field.filterProps
+      : getFilterProps(allData, field);
 
   const newFilter = {
     ...(mergeDomain ? mergeFilterDomainStep(filter, filterProps) : {...filter, ...filterProps}),
@@ -1124,4 +1148,90 @@ export function filterDatasetCPU(state, dataId) {
   };
 
   return set(['datasets', dataId], cpuFilteredDataset, state);
+}
+
+/**
+ * Validate parsed filters with datasets and add filterProps to field
+ * @type {typeof import('./filter-utils').validateFiltersUpdateDatasets}
+ */
+export function validateFiltersUpdateDatasets(state, filtersToValidate = []) {
+  const validated = [];
+  const failed = [];
+  const {datasets} = state;
+  let updatedDatasets = datasets;
+
+  // merge filters
+  filtersToValidate.forEach(filter => {
+    // we can only look for datasets define in the filter dataId
+    const datasetIds = toArray(filter.dataId);
+
+    // we can merge a filter only if all datasets in filter.dataId are loaded
+    if (datasetIds.every(d => datasets[d])) {
+      // all datasetIds in filter must be present the state datasets
+      const {filter: validatedFilter, applyToDatasets, augmentedDatasets} = datasetIds.reduce(
+        (acc, datasetId) => {
+          const dataset = updatedDatasets[datasetId];
+          const layers = state.layers.filter(l => l.config.dataId === dataset.id);
+          const {filter: updatedFilter, dataset: updatedDataset} = validateFilterWithData(
+            acc.augmentedDatasets[datasetId] || dataset,
+            filter,
+            layers
+          );
+
+          if (updatedFilter) {
+            return {
+              ...acc,
+              // merge filter props
+              filter: acc.filter
+                ? {
+                    ...acc.filter,
+                    ...mergeFilterDomainStep(acc, updatedFilter)
+                  }
+                : updatedFilter,
+
+              applyToDatasets: [...acc.applyToDatasets, datasetId],
+
+              augmentedDatasets: {
+                ...acc.augmentedDatasets,
+                [datasetId]: updatedDataset
+              }
+            };
+          }
+
+          return acc;
+        },
+        {
+          filter: null,
+          applyToDatasets: [],
+          augmentedDatasets: {}
+        }
+      );
+
+      if (validatedFilter && isEqual(datasetIds, applyToDatasets)) {
+        validated.push(validatedFilter);
+        updatedDatasets = {
+          ...updatedDatasets,
+          ...augmentedDatasets
+        };
+      }
+    } else {
+      failed.push(filter);
+    }
+  });
+
+  return {validated, failed, updatedDatasets};
+}
+
+/**
+ * Retrieve interval bins for time filter
+ * @type {typeof import('./filter-utils').getIntervalBins}
+ */
+export function getIntervalBins(filter) {
+  const {bins} = filter;
+  const interval = filter.plotType && filter.plotType.interval;
+  if (!interval || !bins || Object.keys(bins).length === 0) {
+    return null;
+  }
+  const values = Object.values(bins);
+  return values[0] ? values[0][interval] : null;
 }
