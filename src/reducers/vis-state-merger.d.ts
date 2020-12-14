@@ -1,39 +1,67 @@
-import {VisState} from './vis-state-updaters';
-import {ParsedConfig} from 'schemas';
+import {VisState, Datasets, Dataset} from './vis-state-updaters';
+import {ParsedConfig, ParsedLayer} from 'schemas';
+import {Layer} from 'layers';
 
 export function mergeAnimationConfig(
   state: VisState,
-  animation: ParsedConfig['visState']['animationConfig']
+  animation: ParsedConfig['visState']['animationConfig'],
+  fromConfig?: boolean
 ): VisState;
 export function mergeFilters(
   state: VisState,
-  filters: ParsedConfig['visState']['filters']
+  filters: ParsedConfig['visState']['filters'],
+  fromConfig?: boolean
 ): VisState;
 export function mergeInteractions(
   state: VisState,
-  interactionConfig: ParsedConfig['visState']['interactionConfig']
+  interactionConfig: ParsedConfig['visState']['interactionConfig'],
+  fromConfig?: boolean
 ): VisState;
 export function mergeLayerBlending(
   state: VisState,
-  layerBlending: ParsedConfig['visState']['layerBlending']
+  layerBlending: ParsedConfig['visState']['layerBlending'],
+  fromConfig?: boolean
 ): VisState;
-export function mergeLayers(state: VisState, layers: ParsedConfig['visState']['layers']): VisState;
+export function mergeLayers(
+  state: VisState,
+  layers: ParsedConfig['visState']['layers'],
+  fromConfig?: boolean
+): VisState;
 export function mergeSplitMaps(
   state: VisState,
-  splitMaps: ParsedConfig['visState']['splitMaps']
+  splitMaps: ParsedConfig['visState']['splitMaps'],
+  fromConfig?: boolean
 ): VisState;
 
 export function mergeInteractionTooltipConfig(state: VisState);
 
 export function isValidMerger(arg: any): boolean;
 export type Merger = {
-  merge: (state: VisState, config: any) => VisState, 
-  prop: string, 
-  toMergeProp?: string 
+  merge: (state: VisState, config: any, fromConfig?: boolean) => VisState;
+  prop: string;
+  toMergeProp?: string;
 };
 
-export function validateSavedVisualChannels(fields, newLayer, savedLayer);
-export function validateLayerWithData({fields, id: dataId}, savedLayer, layerClasses);
+export function validateSavedVisualChannels(
+  fields: Dataset['fields'],
+  newLayer: Layer,
+  savedLayer: ParsedLayer
+): null | Layer;
+
+export function validateLayerWithData(
+  dataset: Dataset,
+  savedLayer: ParsedLayer,
+  layerClasses: VisState['layerClasses'],
+  option?: {
+    allowEmptyColumn?: boolean;
+  }
+): Layer | null;
+
+export function validateLayersByDatasets(
+  datasets: Datasets,
+  layerClasses: VisState['layerClasses'],
+  layers: ParsedConfig['visState']['layers']
+): {validated: Layer[]; failed: ParsedConfig['visState']['layers']};
 
 export type VisStateMergers = Merger[];
 

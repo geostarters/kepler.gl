@@ -180,6 +180,40 @@ export function setFilter(idx, prop, value, valueIndex) {
 }
 
 /**
+ * Same as Update filter
+ * @memberof visStateActions
+ * @param idx -`idx` of filter to be updated
+ * @param prop - `prop` of filter, e,g, `dataId`, `name`, `value`
+ * @param value - new value
+ * @param valueIndex - dataId index
+ * @returns action
+ * @type {typeof import('./vis-state-actions').setFilterAnimationTime}
+ * @public
+ */
+export function setFilterAnimationTime(idx, prop, value, valueIndex) {
+  return {
+    type: ActionTypes.SET_FILTER_ANIMATION_TIME,
+    idx,
+    prop,
+    value,
+    valueIndex
+  };
+}
+
+/**
+ * Same as Update filter
+ * @memberof visStateActions
+ * @type {typeof import('./vis-state-actions').setFilterAnimationWindow}
+ * @public
+ */
+export function setFilterAnimationWindow({id, animationWindow}) {
+  return {
+    type: ActionTypes.SET_FILTER_ANIMATION_WINDOW,
+    id,
+    animationWindow
+  };
+}
+/**
  * Add a new filter
  * @memberof visStateActions
  * @param dataId - dataset `id` this new filter is associated with
@@ -372,6 +406,23 @@ export function updateVisData(datasets, options, config) {
 }
 
 /**
+ * Rename an existing dataset in `visState`
+ * @memberof visStateActions
+ * @param dataId - ***required** Id of the dataset to update
+ * @param label - ***required** New name for the dataset
+ * @returns action
+ * @type {typeof import('./vis-state-actions').renameDataset}
+ * @public
+ */
+export function renameDataset(dataId, label) {
+  return {
+    type: ActionTypes.RENAME_DATASET,
+    dataId,
+    label
+  };
+}
+
+/**
  * Start and end filter animation
  * @memberof visStateActions
  * @param {Number} idx of filter
@@ -407,13 +458,13 @@ export function updateFilterAnimationSpeed(idx, speed) {
  * Reset animation
  * @memberof visStateActions
  * @param value -  Current value of the slider
- * @type {typeof import('./vis-state-actions').updateAnimationTime}
+ * @type {typeof import('./vis-state-actions').setLayerAnimationTime}
  * @returns action
  * @public
  */
-export function updateAnimationTime(value) {
+export function setLayerAnimationTime(value) {
   return {
-    type: ActionTypes.UPDATE_ANIMATION_TIME,
+    type: ActionTypes.SET_LAYER_ANIMATION_TIME,
     value
   };
 }
@@ -430,6 +481,12 @@ export function updateLayerAnimationSpeed(speed) {
   return {
     type: ActionTypes.UPDATE_LAYER_ANIMATION_SPEED,
     speed
+  };
+}
+
+export function toggleLayerAnimation() {
+  return {
+    type: ActionTypes.TOGGLE_LAYER_ANIMATION
   };
 }
 

@@ -38,7 +38,7 @@ import {generateMapboxLayers, updateMapboxLayers} from 'layers/mapbox-utils';
 import {OVERLAY_TYPE} from 'layers/base-layer';
 import {setLayerBlending} from 'utils/gl-utils';
 import {transformRequest} from 'utils/map-style-utils/mapbox-utils';
-import {getLayerHoverProp} from 'utils/layer-utils';
+import {getLayerHoverProp, renderDeckGlLayer} from 'utils/layer-utils';
 
 // default-settings
 import ThreeDBuildingLayer from 'deckgl-layers/3d-building-layer/3d-building-layer';
@@ -104,7 +104,6 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
       filters: PropTypes.arrayOf(PropTypes.any).isRequired,
       mapState: PropTypes.object.isRequired,
       mapControls: PropTypes.object.isRequired,
-      uiState: PropTypes.object.isRequired,
       mapStyle: PropTypes.object.isRequired,
       mousePos: PropTypes.object.isRequired,
       mapboxApiAccessToken: PropTypes.string.isRequired,
@@ -302,7 +301,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
           layersToRender,
           datasets
         });
-        if (layerHoverProp) {
+        if (layerHoverProp && layerPinnedProp) {
           layerHoverProp.primaryData = layerPinnedProp.data;
           layerHoverProp.compareType = interactionConfig.tooltip.config.compareType;
         }
@@ -345,41 +344,6 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
       return screenCoord && {x: screenCoord[0], y: screenCoord[1]};
     }
 
-    _renderLayer = (overlays, idx) => {
-      const {
-        datasets,
-        layers,
-        layerData,
-        hoverInfo,
-        clicked,
-        mapState,
-        interactionConfig,
-        animationConfig
-      } = this.props;
-      const layer = layers[idx];
-      const data = layerData[idx];
-      const {gpuFilter} = datasets[layer.config.dataId] || {};
-
-      const objectHovered = clicked || hoverInfo;
-      const layerCallbacks = {
-        onSetLayerDomain: val => this._onLayerSetDomain(idx, val)
-      };
-
-      // Layer is Layer class
-      const layerOverlay = layer.renderLayer({
-        data,
-        gpuFilter,
-        idx,
-        interactionConfig,
-        layerCallbacks,
-        mapState,
-        animationConfig,
-        objectHovered
-      });
-
-      return overlays.concat(layerOverlay || []);
-    };
-
     _renderDeckOverlay(layersToRender) {
       const {
         mapState,
@@ -402,7 +366,13 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
           .filter(
             idx => layers[idx].overlayType === OVERLAY_TYPE.deckgl && layersToRender[layers[idx].id]
           )
-          .reduce(this._renderLayer, []);
+          .reduce((overlays, idx) => {
+            const layerCallbacks = {
+              onSetLayerDomain: val => this._onLayerSetDomain(idx, val)
+            };
+            const layerOverlay = renderDeckGlLayer(this.props, layerCallbacks, idx);
+            return overlays.concat(layerOverlay || []);
+          }, []);
       }
 
       if (mapStyle.visibleLayerGroups['3d building']) {
@@ -480,7 +450,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
         mapboxApiAccessToken,
         mapboxApiUrl,
         mapControls,
-        uiState,
+        locale,
         uiStateActions,
         visStateActions,
         interactionConfig,
@@ -504,7 +474,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
         transformRequest
       };
 
-      const isEdit = uiState.mapControls.mapDraw.active;
+      const isEdit = mapControls.mapDraw.active;
       const hasGeocoderLayer = layers.find(l => l.id === GEOCODER_LAYER_ID);
 
       return (
@@ -522,7 +492,7 @@ export default function MapContainerFactory(MapPopover, MapControl, Editor) {
             scale={mapState.scale || 1}
             top={interactionConfig.geocoder && interactionConfig.geocoder.enabled ? 52 : 0}
             editor={editor}
-            locale={uiState.locale}
+            locale={locale}
             onTogglePerspective={mapStateActions.togglePerspective}
             onToggleSplitMap={mapStateActions.toggleSplitMap}
             onMapToggleLayer={this._handleMapToggleLayer}

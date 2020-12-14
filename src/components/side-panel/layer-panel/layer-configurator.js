@@ -29,18 +29,19 @@ import ItemSelector from 'components/common/item-selector/item-selector';
 
 import VisConfigByFieldSelectorFactory from './vis-config-by-field-selector';
 import LayerColumnConfigFactory from './layer-column-config';
-import LayerTypeSelector from './layer-type-selector';
+import LayerTypeSelectorFactory from './layer-type-selector';
 import DimensionScaleSelector from './dimension-scale-selector';
 import ColorSelector from './color-selector';
 import SourceDataSelectorFactory from 'components/side-panel/common/source-data-selector';
-import VisConfigSwitch from './vis-config-switch';
+import VisConfigSwitchFactory from './vis-config-switch';
 import VisConfigSliderFactory from './vis-config-slider';
 import LayerConfigGroupFactory, {ConfigGroupCollapsibleContent} from './layer-config-group';
 import TextLabelPanelFactory from './text-label-panel';
 
 import {capitalizeFirstLetter} from 'utils/utils';
 
-import {CHANNEL_SCALE_SUPPORTED_FIELDS, LAYER_TYPES} from 'constants/default-settings';
+import {CHANNEL_SCALE_SUPPORTED_FIELDS} from 'constants/default-settings';
+import {LAYER_TYPES} from 'layers/types';
 
 const StyledLayerConfigurator = styled.div.attrs({
   className: 'layer-panel__config'
@@ -59,7 +60,10 @@ const StyledLayerVisualConfigurator = styled.div.attrs({
 `;
 
 export const getLayerFields = (datasets, layer) =>
-  datasets[layer.config.dataId] ? datasets[layer.config.dataId].fields : [];
+  layer.config && datasets[layer.config.dataId] ? datasets[layer.config.dataId].fields : [];
+
+export const getLayerDataset = (datasets, layer) =>
+  layer.config && datasets[layer.config.dataId] ? datasets[layer.config.dataId] : null;
 
 export const getLayerConfiguratorProps = props => ({
   layer: props.layer,
@@ -87,7 +91,9 @@ LayerConfiguratorFactory.deps = [
   TextLabelPanelFactory,
   LayerConfigGroupFactory,
   ChannelByValueSelectorFactory,
-  LayerColumnConfigFactory
+  LayerColumnConfigFactory,
+  LayerTypeSelectorFactory,
+  VisConfigSwitchFactory
 ];
 
 export default function LayerConfiguratorFactory(
@@ -96,7 +102,9 @@ export default function LayerConfiguratorFactory(
   TextLabelPanel,
   LayerConfigGroup,
   ChannelByValueSelector,
-  LayerColumnConfig
+  LayerColumnConfig,
+  LayerTypeSelector,
+  VisConfigSwitch
 ) {
   class LayerConfigurator extends Component {
     static propTypes = {
@@ -495,7 +503,7 @@ export default function LayerConfiguratorFactory(
             )}
             <ConfigGroupCollapsibleContent>
               <ChannelByValueSelector
-                channel={layer.visualChannels.color}
+                channel={layer.visualChannels.sourceColor}
                 {...layerChannelConfigProps}
               />
               <VisConfigSlider {...layer.visConfigSettings.opacity} {...visConfiguratorProps} />
@@ -901,7 +909,7 @@ export default function LayerConfiguratorFactory(
       const visConfiguratorProps = getVisConfiguratorProps(this.props);
       const layerConfiguratorProps = getLayerConfiguratorProps(this.props);
       const layerChannelConfigProps = getLayerChannelConfigProps(this.props);
-
+      const dataset = getLayerDataset(datasets, layer);
       const renderTemplate = layer.type && `_render${capitalizeFirstLetter(layer.type)}LayerConfig`;
 
       return (
@@ -911,36 +919,35 @@ export default function LayerConfiguratorFactory(
           ) : null}
           <LayerConfigGroup label={'layer.basic'} collapsible expanded={!layer.hasAllColumns()}>
             <LayerTypeSelector
+              datasets={datasets}
               layer={layer}
               layerTypeOptions={layerTypeOptions}
               onSelect={updateLayerType}
             />
-            <ConfigGroupCollapsibleContent>
-              {Object.keys(datasets).length > 1 && (
-                <SourceDataSelector
-                  datasets={datasets}
-                  id={layer.id}
-                  disabled={layer.type && config.columns}
-                  dataId={config.dataId}
-                  onSelect={value => updateLayerConfig({dataId: value})}
-                />
-              )}
-              <LayerColumnConfig
-                columnPairs={layer.columnPairs}
-                columns={layer.config.columns}
-                assignColumnPairs={layer.assignColumnPairs.bind(layer)}
-                assignColumn={layer.assignColumn.bind(layer)}
-                columnLabels={layer.columnLabels}
-                fields={fields}
-                fieldPairs={fieldPairs}
-                updateLayerConfig={updateLayerConfig}
-                updateLayerType={this.props.updateLayerType}
+            {Object.keys(datasets).length > 1 && (
+              <SourceDataSelector
+                datasets={datasets}
+                id={layer.id}
+                dataId={config.dataId}
+                onSelect={value => updateLayerConfig({dataId: value})}
               />
-            </ConfigGroupCollapsibleContent>
+            )}
+            <LayerColumnConfig
+              columnPairs={layer.columnPairs}
+              columns={layer.config.columns}
+              assignColumnPairs={layer.assignColumnPairs.bind(layer)}
+              assignColumn={layer.assignColumn.bind(layer)}
+              columnLabels={layer.columnLabels}
+              fields={fields}
+              fieldPairs={fieldPairs}
+              updateLayerConfig={updateLayerConfig}
+              updateLayerType={this.props.updateLayerType}
+            />
           </LayerConfigGroup>
           {this[renderTemplate] &&
             this[renderTemplate]({
               layer,
+              dataset,
               visConfiguratorProps,
               layerChannelConfigProps,
               layerConfiguratorProps

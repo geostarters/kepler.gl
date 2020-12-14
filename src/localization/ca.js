@@ -26,6 +26,7 @@ export default {
     label: 'etiqueta',
     fillColor: 'color fons',
     color: 'color',
+    coverage: 'cobertura',
     strokeColor: 'color de traç',
     radius: 'radi',
     outline: 'outline',
@@ -121,6 +122,7 @@ export default {
     }
   },
   layerVisConfigs: {
+    angle: 'Angle',
     strokeWidth: 'Amplada traç',
     strokeWidthRange: 'Rang amplada de traç',
     radius: 'Radi',
@@ -202,7 +204,13 @@ export default {
     delete: 'Esborra',
     timePlayback: 'Reproducció de temps',
     cloudStorage: 'Emmagatzematge al núvol',
-    '3DMap': 'Mapa 3D'
+    '3DMap': 'Mapa 3D',
+    animationByWindow: 'Finestra Temporal Mòbil',
+    animationByIncremental: 'Finestra Temporal Incremental',
+    speed: 'velocitat',
+    play: 'iniciar',
+    pause: 'pausar',
+    reset: 'reiniciar'
   },
   toolbar: {
     exportImage: 'Exporta imatge',
@@ -377,7 +385,8 @@ export default {
   interactions: {
     tooltip: 'Suggeriment',
     brush: 'Pinzell',
-    coordinate: 'Coordenades'
+    coordinate: 'Coordenades',
+    geocoder: 'Geocodificador'
   },
   layerBlending: {
     title: 'Combinació de capes',
@@ -403,7 +412,8 @@ export default {
     },
     hexagon: {
       worldUnitSize: "Radi d'hexàgon (km)"
-    }
+    },
+    hex_id: 'id hex'
   },
   color: {
     customPalette: 'Paleta personalitzada',
@@ -430,6 +440,24 @@ export default {
     uploading: 'Carregant',
     fileNotSupported: "L'arxiu {errorFiles} no és compatible.",
     or: 'o'
+  },
+  geocoder: {
+    title: 'Introdueix una adreça'
+  },
+  fieldSelector: {
+    clearAll: 'Treure tots',
+    formatting: 'Format'
+  },
+  compare: {
+    modeLabel: 'Mode Comparació',
+    typeLabel: 'Tipus de Comparació',
+    types: {
+      absolute: 'Absoluta',
+      relative: 'Relativa'
+    }
+  },
+  mapPopover: {
+    primary: 'Principal'
   },
   density: 'densitat',
   'Bug Report': "Informe d'errors",

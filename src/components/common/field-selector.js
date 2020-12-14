@@ -78,7 +78,7 @@ const FieldType = PropTypes.oneOfType([
   })
 ]);
 
-const FieldSelectorFactory = FieldListItemFactory => {
+function FieldSelectorFactory(FieldListItemFactory) {
   class FieldSelector extends Component {
     static propTypes = {
       fields: PropTypes.oneOfType([PropTypes.array, PropTypes.arrayOf(FieldType)]),
@@ -159,6 +159,7 @@ const FieldSelectorFactory = FieldListItemFactory => {
             filterOption="name"
             fixedOptions={this.props.suggested}
             inputTheme={this.props.inputTheme}
+            size={this.props.size}
             isError={this.props.error}
             selectedItems={this.selectedItemsSelector(this.props)}
             erasable={this.props.erasable}
@@ -176,7 +177,7 @@ const FieldSelectorFactory = FieldListItemFactory => {
     }
   }
   return FieldSelector;
-};
+}
 
 FieldSelectorFactory.deps = [FieldListItemFactoryFactory];
 export default FieldSelectorFactory;

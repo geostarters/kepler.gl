@@ -164,6 +164,7 @@ export const mergedFilters = [
     plotType: 'histogram',
     yAxis: null,
     isAnimating: false,
+    animationWindow: 'free',
     fieldIdx: [1],
     domain: [1, 76],
     step: 0.01,
@@ -397,6 +398,11 @@ export const expectedMergedDataset = {
   id: 'h3-hex-id',
   label: 'new dataset',
   color: 'dont test me',
+  metadata: {
+    id: 'h3-hex-id',
+    label: 'new dataset',
+    format: ''
+  },
   allData: [
     ['89283082c2fffff', 64],
     ['8928308288fffff', 73],
