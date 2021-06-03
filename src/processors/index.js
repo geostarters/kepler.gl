@@ -18,30 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-// Data Processor
-export {
-  formatCsv,
-  processGeojson,
-  processCsvData,
-  processRowObject,
-  processKeplerglJSON,
-  analyzerTypeToFieldType,
-  getFieldsFromData,
-  parseCsvRowsByFieldType
-} from './data-processor';
-
-// File Handlers
-export {
-  readFileInBatches,
-  processFileData,
-  filesToDataPayload,
-  isKeplerGlMap,
-  readBatch
-} from './file-handler';
-
-export {Processors as default} from './data-processor';
-=======
 // Data Processor
 export {
   formatCsv,
@@ -65,4 +41,3 @@ export {
 } from './file-handler';
 
 export {Processors as default} from './data-processor';
->>>>>>> master

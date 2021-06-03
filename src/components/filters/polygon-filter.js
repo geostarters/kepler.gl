@@ -18,60 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React, {useMemo, useCallback} from 'react';
-import ItemSelector from 'components/common/item-selector/item-selector';
-import {StyledFilterPanel} from './components';
-import {LAYER_TYPES} from 'layers/types';
-
-const layerFilter = layer => layer.type === LAYER_TYPES.point;
-const isAlreadySelected = (selectedLayers, layerId) =>
-  selectedLayers.findIndex(l => l.id === layerId) === -1;
-
-function PolygonFilterFactory() {
-  const PolygonFilter = React.memo(({filter, layers, setLayers}) => {
-    const setNewLayers = useCallback(
-      newLayers => {
-        return setLayers(newLayers.map(l => l.id));
-      },
-      [setLayers]
-    );
-
-    const selectedLayers = useMemo(() => layers.filter(l => filter.layerId.includes(l.id)), [
-      filter,
-      layers
-    ]);
-
-    const availableLayers = useMemo(() => {
-      // remove already added layers and filter out non point layers
-      return layers.filter(
-        layer => layerFilter(layer) && isAlreadySelected(selectedLayers, layer.id)
-      );
-    }, [layers, selectedLayers]);
-
-    return (
-      <div>
-        <StyledFilterPanel htmlFor={`filter-${filter.id}`}>Layers:</StyledFilterPanel>
-        <ItemSelector
-          options={availableLayers}
-          selectedItems={selectedLayers}
-          onChange={setNewLayers}
-          searchable={false}
-          multiSelect={true}
-          getOptionValue={l => l.id}
-          displayOption={l => l.config.label}
-        />
-      </div>
-    );
-  });
-
-  PolygonFilter.displayName = 'PolygonFilter';
-
-  return PolygonFilter;
-}
-
-export default PolygonFilterFactory;
-=======
 import React, {useMemo, useCallback} from 'react';
 import ItemSelector from 'components/common/item-selector/item-selector';
 import {StyledFilterPanel} from './components';
@@ -125,4 +71,3 @@ function PolygonFilterFactory() {
 }
 
 export default PolygonFilterFactory;
->>>>>>> master

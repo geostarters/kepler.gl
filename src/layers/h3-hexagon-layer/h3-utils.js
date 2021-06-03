@@ -18,51 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import {h3GetResolution, h3IsValid, h3ToGeo, h3ToGeoBoundary} from 'h3-js';
-import {ALL_FIELD_TYPES} from 'constants/default-settings';
-import {notNullorUndefined} from 'utils/data-utils';
-
-export {h3GetResolution, h3IsValid};
-
-// get vertices should return [lon, lat]
-export function getVertices({id}) {
-  // always reverse it
-  return h3ToGeoBoundary(id, true);
-}
-
-// get centroid should return [lon, lat]
-export function getCentroid({id}) {
-  // always reverse it to [lng, lat]
-  return h3ToGeo(id).reverse();
-}
-
-export function idToPolygonGeo({object}, properties) {
-  if (!object || !object.id) {
-    return null;
-  }
-
-  const vertices = getVertices(object);
-
-  return {
-    geometry: {
-      coordinates: vertices,
-      type: 'LineString'
-    },
-    properties
-  };
-}
-
-export const isHexField = (field, fieldIdx, allData) => {
-  if (!field.type === ALL_FIELD_TYPES.string) {
-    return false;
-  }
-  const firstDP = allData.find(d => notNullorUndefined(d[fieldIdx]));
-  return firstDP && h3IsValid(firstDP[fieldIdx]);
-};
-
-export const getHexFields = (fields, allData) => fields.filter((f, i) => isHexField(f, i, allData));
-=======
 import {h3GetResolution, h3IsValid, h3ToGeo, h3ToGeoBoundary} from 'h3-js';
 import {ALL_FIELD_TYPES} from 'constants/default-settings';
 import {notNullorUndefined} from 'utils/data-utils';
@@ -106,4 +61,3 @@ export const isHexField = (field, fieldIdx, allData) => {
 };
 
 export const getHexFields = (fields, allData) => fields.filter((f, i) => isHexField(f, i, allData));
->>>>>>> master

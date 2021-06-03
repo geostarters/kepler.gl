@@ -18,41 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React from 'react';
-import TimeRangeSliderFactory from 'components/common/time-range-slider';
-
-/*
- * TimeRangeFilter -> TimeRangeSlider -> RangeSlider
- */
-
-TimeRangeFilterFactory.deps = [TimeRangeSliderFactory];
-
-function TimeRangeFilterFactory(TimeRangeSlider) {
-  const TimeRangeFilter = ({filter, setFilter, isAnimatable, toggleAnimation, hideTimeTitle}) => (
-    <TimeRangeSlider
-      id={filter.id}
-      domain={filter.domain}
-      value={filter.value}
-      plotType={filter.plotType}
-      lineChart={filter.lineChart}
-      step={filter.step}
-      speed={filter.speed}
-      isAnimating={filter.isAnimating}
-      histogram={filter.enlarged ? filter.enlargedHistogram : filter.histogram}
-      onChange={setFilter}
-      toggleAnimation={toggleAnimation}
-      isAnimatable={isAnimatable}
-      isEnlarged={filter.enlarged}
-      hideTimeTitle={hideTimeTitle}
-    />
-  );
-
-  return TimeRangeFilter;
-}
-
-export default TimeRangeFilterFactory;
-=======
 import React from 'react';
 import TimeRangeSliderFactory from 'components/common/time-range-slider';
 import {DEFAULT_TIME_FORMAT} from 'constants/default-settings';
@@ -101,4 +66,3 @@ function TimeRangeFilterFactory(TimeRangeSlider) {
 }
 
 export default TimeRangeFilterFactory;
->>>>>>> master

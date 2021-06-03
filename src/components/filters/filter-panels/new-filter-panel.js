@@ -18,74 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React, {useCallback} from 'react';
-import {StyledFilterContent} from 'components/common/styled-components';
-import FilterPanelHeaderFactory from 'components/side-panel/filter-panel/filter-panel-header';
-import SourceDataSelectorFactory from 'components/side-panel/common/source-data-selector';
-import FieldSelectorFactory from '../../common/field-selector';
-
-NewFilterPanelFactory.deps = [
-  FilterPanelHeaderFactory,
-  SourceDataSelectorFactory,
-  FieldSelectorFactory
-];
-
-function NewFilterPanelFactory(FilterPanelHeader, SourceDataSelector, FieldSelector) {
-  const NewFilterPanel = React.memo(
-    ({idx, filter, datasets, allAvailableFields, setFilter, removeFilter, enlargeFilter}) => {
-      const onFieldSelector = useCallback(field => setFilter(idx, 'name', field.name), [
-        idx,
-        setFilter
-      ]);
-
-      const onSourceDataSelector = useCallback(value => setFilter(idx, 'dataId', value), [
-        idx,
-        setFilter
-      ]);
-
-      return (
-        <>
-          <FilterPanelHeader
-            datasets={[datasets[filter.dataId[0]]]}
-            allAvailableFields={allAvailableFields}
-            idx={idx}
-            filter={filter}
-            removeFilter={removeFilter}
-            enlargeFilter={enlargeFilter}
-            enlarged={filter.enlarged}
-          >
-            <FieldSelector
-              inputTheme="secondary"
-              fields={allAvailableFields}
-              value={Array.isArray(filter.name) ? filter.name[0] : filter.name}
-              erasable={false}
-              onSelect={onFieldSelector}
-            />
-          </FilterPanelHeader>
-          <StyledFilterContent className="filter-panel__content">
-            {Object.keys(datasets).length > 1 && (
-              <SourceDataSelector
-                inputTheme="secondary"
-                datasets={datasets}
-                disabled={filter.freeze}
-                dataId={filter.dataId}
-                onSelect={onSourceDataSelector}
-              />
-            )}
-          </StyledFilterContent>
-        </>
-      );
-    }
-  );
-
-  NewFilterPanel.displayName = 'NewFilterPanel';
-
-  return NewFilterPanel;
-}
-
-export default NewFilterPanelFactory;
-=======
 import React, {useCallback} from 'react';
 import {StyledFilterContent} from 'components/common/styled-components';
 import FilterPanelHeaderFactory from 'components/side-panel/filter-panel/filter-panel-header';
@@ -153,4 +85,3 @@ function NewFilterPanelFactory(FilterPanelHeader, SourceDataSelector, FieldSelec
 }
 
 export default NewFilterPanelFactory;
->>>>>>> master

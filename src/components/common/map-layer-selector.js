@@ -18,51 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React from 'react';
-import PropTypes from 'prop-types';
-import styled from 'styled-components';
-// import Switch from 'components/common/switch';
-import Checkbox from 'components/common/checkbox';
-import {generateHashId} from '../../utils/utils';
-
-const propTypes = {
-  // Required
-  layers: PropTypes.arrayOf(PropTypes.object).isRequired,
-  onMapToggleLayer: PropTypes.func.isRequired
-};
-
-const MapLayerSelect = styled.div`
-  padding: 12px;
-
-  .map-layer-selector__item {
-    margin: 12px 0;
-  }
-`;
-
-const MapLayerSelector = ({layers, onMapToggleLayer}) => (
-  <MapLayerSelect className="map-layer-selector">
-    {layers.map((layer, index) => (
-      <div key={layer.id} className="map-layer-selector__item">
-        <Checkbox
-          type="radio"
-          checked={layer.isVisible}
-          id={`${layer.id}-toggle-${generateHashId(4)}`}
-          label={layer.name}
-          onChange={e => {
-            e.preventDefault();
-            onMapToggleLayer(layer.id);
-          }}
-        />
-      </div>
-    ))}
-  </MapLayerSelect>
-);
-
-MapLayerSelector.propTypes = propTypes;
-
-export default MapLayerSelector;
-=======
 import React from 'react';
 import styled from 'styled-components';
 import Checkbox from 'components/common/checkbox';
@@ -97,4 +52,3 @@ const MapLayerSelector = ({layers, onMapToggleLayer}) => (
 );
 
 export default MapLayerSelector;
->>>>>>> master

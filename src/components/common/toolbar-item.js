@@ -18,70 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React from 'react';
-import styled from 'styled-components';
-import {FormattedMessage} from 'localization';
-
-const StyledDiv = styled.div.attrs({
-  className: 'toolbar-item'
-})`
-  color: ${props =>
-    props.active ? props.theme.toolbarItemIconHover : props.theme.panelHeaderIcon};
-  padding: 12px 20px;
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  width: 110px;
-  justify-content: space-between;
-  border: 1px solid ${props => (props.active ? props.theme.toolbarItemBorderHover : 'transparent')};
-  border-radius: ${props => props.theme.toolbarItemBorderRaddius};
-  background-color: ${props =>
-    props.active ? props.theme.toolbarItemBgdHover : props.theme.dropdownListBgd};
-
-  svg {
-    margin-bottom: 4px;
-  }
-  .toolbar-item__title {
-    white-space: nowrap;
-    color: ${props => props.theme.textColorHl};
-  }
-
-  :hover {
-    background-color: ${props => props.theme.toolbarItemBgdHover};
-    border-color: ${props => props.theme.toolbarItemBorderHover};
-    svg {
-      color: ${props => props.theme.toolbarItemIconHover};
-    }
-    cursor: pointer;
-  }
-`;
-
-const ToolbarItem = React.memo(props => (
-  <StyledDiv
-    id={props.id}
-    className={props.className}
-    active={props.active}
-    onClick={e => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (typeof props.onClose === 'function') {
-        props.onClose();
-      }
-      props.onClick(e);
-    }}
-  >
-    {props.icon && <props.icon />}
-    <div className="toolbar-item__title">
-      <FormattedMessage id={props.label} />
-    </div>
-  </StyledDiv>
-));
-
-ToolbarItem.displayName = 'ToolbarItem';
-
-export default ToolbarItem;
-=======
 import React from 'react';
 import styled from 'styled-components';
 import {FormattedMessage} from 'localization';
@@ -145,4 +81,3 @@ const ToolbarItem = React.memo(props => (
 ToolbarItem.displayName = 'ToolbarItem';
 
 export default ToolbarItem;
->>>>>>> master

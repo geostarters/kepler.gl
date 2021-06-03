@@ -18,81 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import {GeoJsonLayer} from '@deck.gl/layers';
-import EnhancedGridLayer from 'deckgl-layers/grid-layer/enhanced-cpu-grid-layer';
-import AggregationLayer from '../aggregation-layer';
-import {pointToPolygonGeo} from './grid-utils';
-import GridLayerIcon from './grid-layer-icon';
-
-export const gridVisConfigs = {
-  opacity: 'opacity',
-  worldUnitSize: 'worldUnitSize',
-  colorRange: 'colorRange',
-  coverage: 'coverage',
-  sizeRange: 'elevationRange',
-  percentile: 'percentile',
-  elevationPercentile: 'elevationPercentile',
-  elevationScale: 'elevationScale',
-  colorAggregation: 'aggregation',
-  sizeAggregation: 'sizeAggregation',
-  enable3d: 'enable3d'
-};
-
-export default class GridLayer extends AggregationLayer {
-  constructor(props) {
-    super(props);
-
-    this.registerVisConfig(gridVisConfigs);
-    this.visConfigSettings.worldUnitSize.label = 'columns.grid.worldUnitSize';
-  }
-
-  get type() {
-    return 'grid';
-  }
-
-  get layerIcon() {
-    return GridLayerIcon;
-  }
-
-  renderLayer(opts) {
-    const {data, objectHovered, mapState} = opts;
-
-    const zoomFactor = this.getZoomFactor(mapState);
-    const {visConfig} = this.config;
-    const cellSize = visConfig.worldUnitSize * 1000;
-
-    return [
-      new EnhancedGridLayer({
-        ...this.getDefaultAggregationLayerProp(opts),
-        ...data,
-        wrapLongitude: false,
-        cellSize
-      }),
-
-      // render an outline of each cell if not extruded
-      ...(this.isLayerHovered(objectHovered) && !visConfig.enable3d
-        ? [
-            new GeoJsonLayer({
-              ...this.getDefaultHoverLayerProps(),
-              wrapLongitude: false,
-              data: [
-                pointToPolygonGeo({
-                  object: objectHovered.object,
-                  cellSize,
-                  coverage: visConfig.coverage,
-                  mapState
-                })
-              ],
-              getLineColor: this.config.highlightColor,
-              lineWidthScale: 8 * zoomFactor
-            })
-          ]
-        : [])
-    ];
-  }
-}
-=======
 import {GeoJsonLayer} from '@deck.gl/layers';
 import EnhancedGridLayer from 'deckgl-layers/grid-layer/enhanced-cpu-grid-layer';
 import AggregationLayer from '../aggregation-layer';
@@ -168,4 +93,3 @@ export default class GridLayer extends AggregationLayer {
     ];
   }
 }
->>>>>>> master

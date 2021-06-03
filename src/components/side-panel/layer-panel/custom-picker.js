@@ -18,75 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React, {Component} from 'react';
-import PropTypes from 'prop-types';
-import styled, {withTheme} from 'styled-components';
-import {SketchPicker} from 'react-color';
-import onClickOutside from 'react-onclickoutside';
-import {createSelector} from 'reselect';
-// This was put in because 3rd party library react-color doesn't yet cater for customized color of child component <SketchField> which contains HEX/RGB input text box
-// Issue raised: https://github.com/casesandberg/react-color/issues/631
-
-const StyledPicker = styled.div`
-  .sketch-picker {
-    span {
-      color: ${props => props.theme.labelColor} !important;
-      font-family: ${props => props.theme.fontFamily};
-    }
-    input {
-      text-align: center;
-      font-family: ${props => props.theme.fontFamily};
-      color: ${props => props.theme.inputColor} !important;
-      border-color: ${props => props.theme.secondaryInputBgd} !important;
-      box-shadow: none !important;
-      background-color: ${props => props.theme.inputBgdHover} !important;
-    }
-  }
-`;
-
-const PRESET_COLORS = [];
-
-class CustomPicker extends Component {
-  static propTypes = {
-    color: PropTypes.string,
-    onChange: PropTypes.func,
-    onSwatchClose: PropTypes.func
-  };
-
-  themeSelector = props => props.theme;
-  pickerStyleSelector = createSelector(this.themeSelector, theme => ({
-    picker: {
-      width: '200px',
-      padding: '10px 10px 8px',
-      boxSizing: 'initial',
-      background: theme.panelBackground
-    }
-  }));
-
-  handleClickOutside = e => {
-    this.props.onSwatchClose();
-  };
-
-  render() {
-    const {color, onChange} = this.props;
-    const pickerStyle = this.pickerStyleSelector(this.props);
-    return (
-      <StyledPicker>
-        <SketchPicker
-          color={color}
-          onChange={onChange}
-          presetColors={PRESET_COLORS}
-          styles={pickerStyle}
-          disableAlpha
-        />
-      </StyledPicker>
-    );
-  }
-}
-
-export default withTheme(onClickOutside(CustomPicker));
-=======
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import styled, {withTheme} from 'styled-components';
@@ -155,4 +86,3 @@ class CustomPicker extends Component {
 }
 
 export default withTheme(onClickOutside(CustomPicker));
->>>>>>> master

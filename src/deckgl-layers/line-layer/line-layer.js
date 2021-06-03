@@ -18,62 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import {LineLayer} from '@deck.gl/layers';
-import GL from '@luma.gl/constants';
-import {editShader} from 'deckgl-layers/layer-utils/shader-utils';
-
-const defaultProps = {
-  ...LineLayer.defaultProps,
-  getTargetColor: x => x.color || [0, 0, 0, 255]
-};
-
-function addInstanceColorShader(vs) {
-  const targetColorVs = editShader(
-    vs,
-    'line target color vs',
-    'attribute vec4 instanceColors;',
-    'attribute vec4 instanceColors; attribute vec4 instanceTargetColors;'
-  );
-
-  return editShader(
-    targetColorVs,
-    'line color vs',
-    'vColor = vec4(instanceColors.rgb, instanceColors.a * opacity);',
-    `vec4 color = mix(instanceColors, instanceTargetColors, positions.x);` +
-      `vColor = vec4(color.rgb, color.a * opacity);`
-  );
-}
-
-export default class EnhancedLineLayer extends LineLayer {
-  getShaders() {
-    const shaders = super.getShaders();
-
-    return {
-      ...shaders,
-      vs: addInstanceColorShader(shaders.vs)
-    };
-  }
-
-  initializeState() {
-    super.initializeState();
-    const {attributeManager} = this.state;
-    attributeManager.addInstanced({
-      instanceTargetColors: {
-        size: this.props.colorFormat.length,
-        type: GL.UNSIGNED_BYTE,
-        normalized: true,
-        transition: true,
-        accessor: 'getTargetColor',
-        defaultValue: [0, 0, 0, 255]
-      }
-    });
-  }
-}
-
-EnhancedLineLayer.layerName = 'EnhancedLineLayer';
-EnhancedLineLayer.defaultProps = defaultProps;
-=======
 import {LineLayer} from '@deck.gl/layers';
 import GL from '@luma.gl/constants';
 import {editShader} from 'deckgl-layers/layer-utils/shader-utils';
@@ -176,4 +120,3 @@ export default class EnhancedLineLayer extends LineLayer {
 
 EnhancedLineLayer.layerName = 'EnhancedLineLayer';
 EnhancedLineLayer.defaultProps = defaultProps;
->>>>>>> master

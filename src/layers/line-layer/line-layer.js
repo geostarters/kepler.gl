@@ -18,91 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import {BrushingExtension} from '@deck.gl/extensions';
-
-import LineLayerIcon from './line-layer-icon';
-import ArcLayer from '../arc-layer/arc-layer';
-import EnhancedLineLayer from 'deckgl-layers/line-layer/line-layer';
-
-export default class LineLayer extends ArcLayer {
-  get type() {
-    return 'line';
-  }
-
-  get layerIcon() {
-    return LineLayerIcon;
-  }
-
-  get visualChannels() {
-    const visualChannels = super.visualChannels;
-    return {
-      ...visualChannels,
-      sourceColor: {
-        ...visualChannels.sourceColor,
-        accessor: 'getColor'
-      }
-    };
-  }
-
-  static findDefaultLayerProps({fieldPairs = []}) {
-    if (fieldPairs.length < 2) {
-      return {props: []};
-    }
-    const props = {};
-
-    // connect the first two point layer with arc
-    props.columns = {
-      lat0: fieldPairs[0].pair.lat,
-      lng0: fieldPairs[0].pair.lng,
-      lat1: fieldPairs[1].pair.lat,
-      lng1: fieldPairs[1].pair.lng
-    };
-    props.label = `${fieldPairs[0].defaultName} -> ${fieldPairs[1].defaultName} line`;
-
-    return {props: [props]};
-  }
-
-  renderLayer(opts) {
-    const {data, gpuFilter, objectHovered, interactionConfig} = opts;
-
-    const layerProps = {
-      widthScale: this.config.visConfig.thickness
-    };
-
-    const updateTriggers = {
-      getPosition: this.config.columns,
-      getFilterValue: gpuFilter.filterValueUpdateTriggers,
-      ...this.getVisualChannelUpdateTriggers()
-    };
-    const defaultLayerProps = this.getDefaultDeckLayerProps(opts);
-    return [
-      // base layer
-      new EnhancedLineLayer({
-        ...defaultLayerProps,
-        ...this.getBrushingExtensionProps(interactionConfig, 'source_target'),
-        ...data,
-        ...layerProps,
-        updateTriggers,
-        extensions: [...defaultLayerProps.extensions, new BrushingExtension()]
-      }),
-      // hover layer
-      ...(this.isLayerHovered(objectHovered)
-        ? [
-            new EnhancedLineLayer({
-              ...this.getDefaultHoverLayerProps(),
-              ...layerProps,
-              data: [objectHovered.object],
-              getColor: this.config.highlightColor,
-              getTargetColor: this.config.highlightColor,
-              getWidth: data.getWidth
-            })
-          ]
-        : [])
-    ];
-  }
-}
-=======
 import {BrushingExtension} from '@deck.gl/extensions';
 
 import {LAYER_VIS_CONFIGS} from 'layers/layer-factory';
@@ -244,4 +159,3 @@ export default class LineLayer extends ArcLayer {
     ];
   }
 }
->>>>>>> master

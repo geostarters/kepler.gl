@@ -18,82 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-<<<<<<< HEAD
-import React, {useCallback, useMemo} from 'react';
-import TimeRangeFilterFactory from 'components/filters/time-range-filter';
-import {Clock} from 'components/common/icons';
-import SourceDataSelectorFactory from 'components/side-panel/common/source-data-selector';
-import FieldPanelWithFieldSelectFactory from 'components/filters/filter-panels/filter-panel-with-field-select';
-
-TimeRangeFilterPanelFactory.deps = [
-  FieldPanelWithFieldSelectFactory,
-  TimeRangeFilterFactory,
-  SourceDataSelectorFactory
-];
-
-function TimeRangeFilterPanelFactory(FieldPanelWithFieldSelect, TimeRangeFilter) {
-  const TimeRangeFilterPanel = React.memo(
-    ({
-      idx,
-      datasets,
-      allAvailableFields,
-      filter,
-      isAnyFilterAnimating,
-      enlargeFilter,
-      setFilter,
-      removeFilter,
-      toggleAnimation
-    }) => {
-      const onSetFilter = useCallback(value => setFilter(idx, 'value', value), [idx, setFilter]);
-
-      const panelActions = useMemo(
-        () => [
-          {
-            id: filter.id,
-            onClick: enlargeFilter,
-            tooltip: 'tooltip.timePlayback',
-            iconComponent: Clock,
-            active: filter.enlarged
-          }
-        ],
-        [filter.id, filter.enlarged, enlargeFilter]
-      );
-
-      return (
-        <>
-          <FieldPanelWithFieldSelect
-            allAvailableFields={allAvailableFields}
-            datasets={datasets}
-            filter={filter}
-            idx={idx}
-            removeFilter={removeFilter}
-            setFilter={setFilter}
-            panelActions={panelActions}
-          >
-            {filter.type && !filter.enlarged && (
-              <div className="filter-panel__filter">
-                <TimeRangeFilter
-                  filter={filter}
-                  idx={idx}
-                  isAnyFilterAnimating={isAnyFilterAnimating}
-                  toggleAnimation={toggleAnimation}
-                  setFilter={onSetFilter}
-                />
-              </div>
-            )}
-          </FieldPanelWithFieldSelect>
-        </>
-      );
-    }
-  );
-
-  TimeRangeFilterPanel.displayName = 'TimeRangeFilterPanel';
-
-  return TimeRangeFilterPanel;
-}
-
-export default TimeRangeFilterPanelFactory;
-=======
 import React, {useCallback, useMemo} from 'react';
 import TimeRangeFilterFactory from 'components/filters/time-range-filter';
 import {Clock} from 'components/common/icons';
@@ -169,4 +93,3 @@ function TimeRangeFilterPanelFactory(FieldPanelWithFieldSelect, TimeRangeFilter)
 }
 
 export default TimeRangeFilterPanelFactory;
->>>>>>> master
