@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -152,6 +152,12 @@ function mockStateWithFilters(state) {
       payload: [0, 'value', [1474606800000, 1474617600000]]
     },
 
+    // set filter animation speed
+    {
+      action: VisStateActions.updateFilterAnimationSpeed,
+      payload: [0, 4]
+    },
+
     // add another filter
     {action: VisStateActions.addFilter, payload: [testGeoJsonDataId]},
 
@@ -302,9 +308,6 @@ function mockStateWithLayerDimensions(state) {
   const textLabelPayload1 = [layer0, 0, 'field', textLabelField];
   const textLabelPayload2 = [layer0, 0, 'color', [255, 0, 0]];
 
-  // layers = [ 'point', 'geojson', 'hexagon' ]
-  const reorderPayload = [[2, 0, 1]];
-
   const prepareState = applyActions(keplerGlReducer, initialState, [
     // change colorField
     {
@@ -319,39 +322,30 @@ function mockStateWithLayerDimensions(state) {
     {action: VisStateActions.layerTextLabelChange, payload: textLabelPayload1},
     {action: VisStateActions.layerTextLabelChange, payload: textLabelPayload2},
 
-    // add layer
+    // add layer from config
     {
       action: VisStateActions.addLayer,
-      payload: [{id: 'hexagon-2', color: [2, 2, 2]}]
+      payload: [
+        {
+          id: 'hexagon-2',
+          type: 'hexagon',
+          config: {
+            color: [2, 2, 2],
+            isVisible: true,
+            dataId: testCsvDataId,
+            columns: {
+              lat: 'gps_data.lat',
+              lng: 'gps_data.lng'
+            }
+          }
+        }
+      ]
     }
   ]);
 
-  const newLayer = prepareState.visState.layers[2];
+  const reorderPayload = [[2, 0, 1]];
 
-  // set new layer to hexagon
-  const updateState = applyActions(keplerGlReducer, prepareState, [
-    {action: VisStateActions.layerTypeChange, payload: [newLayer, 'hexagon']}
-  ]);
-
-  const hexagonLayer = updateState.visState.layers[2];
-  hexagonLayer.id = 'hexagon-2';
-
-  const updateLayerConfig = {
-    dataId: testCsvDataId,
-    columns: {
-      lat: {value: 'gps_data.lat', fieldIdx: 1},
-      lng: {value: 'gps_data.lng', fieldIdx: 2}
-    },
-    isConfigActive: false
-  };
-
-  const resultState = applyActions(keplerGlReducer, updateState, [
-    // select hexagon layer columns
-    {
-      action: VisStateActions.layerConfigChange,
-      payload: [hexagonLayer, updateLayerConfig]
-    },
-
+  const resultState = applyActions(keplerGlReducer, prepareState, [
     // reorder Layer
     {action: VisStateActions.reorderLayer, payload: reorderPayload}
   ]);
@@ -473,6 +467,7 @@ export const expectedSavedLayer0 = {
       percentile: [0, 100],
       elevationPercentile: [0, 100],
       elevationScale: 5,
+      enableElevationZoomFactor: true,
       colorAggregation: 'count',
       sizeAggregation: 'count',
       enable3d: false
@@ -510,6 +505,7 @@ export const expectedLoadedLayer0 = {
       percentile: [0, 100],
       elevationPercentile: [0, 100],
       elevationScale: 5,
+      enableElevationZoomFactor: true,
       colorAggregation: 'count',
       sizeAggregation: 'count',
       enable3d: false
@@ -653,6 +649,7 @@ export const expectedSavedLayer2 = {
       radiusRange: [0, 50],
       heightRange: [0, 500],
       elevationScale: 5,
+      enableElevationZoomFactor: true,
       stroked: true,
       filled: true,
       enable3d: false,
@@ -699,6 +696,7 @@ export const expectedLoadedLayer2 = {
       radiusRange: [0, 50],
       heightRange: [0, 500],
       elevationScale: 5,
+      enableElevationZoomFactor: true,
       stroked: true,
       filled: true,
       enable3d: false,

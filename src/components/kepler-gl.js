@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -120,6 +120,7 @@ export const mapFieldsSelector = props => ({
   animationConfig: props.visState.animationConfig,
 
   // uiState
+  activeSidePanel: props.uiState.activeSidePanel,
   mapControls: props.uiState.mapControls,
   readOnly: props.uiState.readOnly,
   locale: props.uiState.locale
@@ -250,14 +251,14 @@ function KeplerGlFactory(
   PlotContainer,
   NotificationPanel
 ) {
-  /** @typedef {import('./kepler-gl').KeplerGlProps} KeplerGlProps */
+  /** @typedef {import('./kepler-gl').UnconnectedKeplerGlProps} KeplerGlProps */
   /** @augments React.Component<KeplerGlProps> */
   class KeplerGL extends Component {
     static defaultProps = DEFAULT_KEPLER_GL_PROPS;
 
     componentDidMount() {
       this._validateMapboxToken();
-      this._loadMapStyle(this.props.mapStyles);
+      this._loadMapStyle();
       this._handleResize(this.props);
       if (typeof this.props.onKeplerGlInitialized === 'function') {
         this.props.onKeplerGlInitialized();
@@ -276,9 +277,9 @@ function KeplerGlFactory(
         this._handleResize(this.props);
       }
     }
+    static contextType = RootContext;
 
     root = createRef();
-    static contextType = RootContext;
 
     /* selectors */
     themeSelector = props => props.theme;
@@ -398,10 +399,13 @@ function KeplerGlFactory(
           <IntlProvider locale={uiState.locale} messages={localeMessages[uiState.locale]}>
             <ThemeProvider theme={theme}>
               <GlobalStyle
-                width={width}
-                height={height}
                 className="kepler-gl"
                 id={`kepler-gl__${id}`}
+                style={{
+                  position: 'relative',
+                  width: `${width}px`,
+                  height: `${height}px`
+                }}
                 ref={this.root}
               >
                 <NotificationPanel {...notificationPanelFields} />
@@ -436,9 +440,11 @@ export function mapStateToProps(state = {}, props) {
 }
 
 const defaultUserActions = {};
-const getDispatch = dispatch => dispatch;
+
+const getDispatch = (dispatch, props) => dispatch;
 const getUserActions = (dispatch, props) => props.actions || defaultUserActions;
 
+/** @type {() => import('reselect').OutputParametricSelector<any, any, any, any>} */
 function makeGetActionCreators() {
   return createSelector([getDispatch, getUserActions], (dispatch, userActions) => {
     const [visStateActions, mapStateActions, mapStyleActions, uiStateActions, providerActions] = [

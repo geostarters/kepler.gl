@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -145,6 +145,8 @@ export default {
     sizeScale: 'Mida escala',
     worldUnitSize: 'Mida de la unitat mundial',
     elevationScale: 'Escala elevació',
+    enableElevationZoomFactor: 'Utilitzeu el factor de zoom d’elevació',
+    enableElevationZoomFactorDescription: "'Ajusteu l'elevació en funció del factor de zoom actual",
     heightScale: 'Escala alçada',
     coverageRange: 'Rang ed cobertura',
     highPrecisionRendering: 'Representació alta precisió',
@@ -274,7 +276,7 @@ export default {
       warning: "estàs a punt d'esborrar aquest conjunt de dades. Afectarà {length} capes"
     },
     addStyle: {
-      publishTitle: "1. Publica el teu estil a Mapbox o proporciona el token d'accés",
+      publishTitle: "2. Publica el teu estil a Mapbox o proporciona el token d'accés",
       publishSubtitle1: 'Pots crear el teu propi estil de mapa a',
       publishSubtitle2: 'i',
       publishSubtitle3: 'publicar',
@@ -284,7 +286,7 @@ export default {
       publishSubtitle7:
         'aquí. *kepler.gl és una aplicació client, les dades romanen al teu navegador..',
       exampleToken: 'p.ex. pk.abcdefg.xxxxxx',
-      pasteTitle: "2. Enganxa la URL de l'estil",
+      pasteTitle: "1. Enganxa la URL de l'estil",
       pasteSubtitle1: 'Què és un',
       pasteSubtitle2: "URL de l'estil",
       namingTitle: '3. Posa nom al teu estil'
@@ -406,6 +408,10 @@ export default {
       lng0: 'lng origen ',
       lat1: 'lat destinació',
       lng1: 'lng destinació'
+    },
+    line: {
+      alt0: 'alçada origen',
+      alt1: 'alçada destinació'
     },
     grid: {
       worldUnitSize: 'Mida de malla (km)'

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -143,6 +143,8 @@ export default {
     sizeScale: 'Escala de tamanho',
     worldUnitSize: 'Tamanho unitário do mundo',
     elevationScale: 'Escala de Elevação',
+    enableElevationZoomFactor: 'Use fator de zoom de elevação',
+    enableElevationZoomFactorDescription: 'Ajuste a elevação com base no fator de zoom atual',
     heightScale: 'Escala de Altura',
     coverageRange: 'Alcance de cobertura',
     highPrecisionRendering: 'Renderização de Alta Precisão',
@@ -398,6 +400,10 @@ export default {
       lng0: 'origem lng',
       lat1: 'destino lat',
       lng1: 'destino lng'
+    },
+    line: {
+      alt0: 'origem altitude',
+      alt1: 'destino altitude'
     },
     grid: {
       worldUnitSize: 'Tamanho da Grade (km)'

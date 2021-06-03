@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,6 @@
 
 import React, {useState, useCallback, useRef, useLayoutEffect} from 'react';
 import styled from 'styled-components';
-import PropTypes from 'prop-types';
 import LayerHoverInfoFactory from './layer-hover-info';
 import CoordinateInfoFactory from './coordinate-info';
 import {Pin, ArrowLeft, ArrowRight} from 'components/common/icons';
@@ -182,6 +181,7 @@ export function usePosition({layerHoverProp, x, y, mapW, mapH}, popover) {
   return {moveLeft, moveRight, isLeft, pos};
 }
 export default function MapPopoverFactory(LayerHoverInfo, CoordinateInfo) {
+  /** @type {typeof import('./map-popover').MapPopover} */
   const MapPopover = ({
     x,
     y,
@@ -239,19 +239,6 @@ export default function MapPopoverFactory(LayerHoverInfo, CoordinateInfo) {
         </StyledMapPopover>
       </ErrorBoundary>
     );
-  };
-
-  MapPopover.propTypes = {
-    layerHoverProp: PropTypes.object,
-    coordinate: PropTypes.oneOfType([PropTypes.array, PropTypes.bool]),
-    frozen: PropTypes.bool,
-    x: PropTypes.number,
-    y: PropTypes.number,
-    z: PropTypes.number,
-    mapW: PropTypes.number.isRequired,
-    mapH: PropTypes.number.isRequired,
-    onClose: PropTypes.func.isRequired,
-    isBase: PropTypes.bool
   };
 
   return injectIntl(MapPopover);

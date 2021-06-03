@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,8 @@ export const HexagonIdVisConfigs = {
   enable3d: 'enable3d',
   sizeRange: 'elevationRange',
   coverageRange: 'coverageRange',
-  elevationScale: 'elevationScale'
+  elevationScale: 'elevationScale',
+  enableElevationZoomFactor: 'enableElevationZoomFactor'
 };
 
 export default class HexagonIdLayer extends Layer {
@@ -217,6 +218,7 @@ export default class HexagonIdLayer extends Layer {
     };
 
     const defaultLayerProps = this.getDefaultDeckLayerProps(opts);
+    const hoveredObject = this.hasHoveredObject(objectHovered);
 
     return [
       new H3HexagonLayer({
@@ -247,11 +249,11 @@ export default class HexagonIdLayer extends Layer {
           }
         }
       }),
-      ...(this.isLayerHovered(objectHovered) && !config.sizeField
+      ...(hoveredObject && !config.sizeField
         ? [
             new GeoJsonLayer({
               ...this.getDefaultHoverLayerProps(),
-              data: [idToPolygonGeo(objectHovered)],
+              data: [idToPolygonGeo(hoveredObject)],
               getLineColor: config.highlightColor,
               lineWidthScale: DEFAULT_LINE_SCALE_VALUE * zoomFactor,
               wrapLongitude: false
