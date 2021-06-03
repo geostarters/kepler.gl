@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -255,6 +255,7 @@ mergedLayer0.config = {
   label: 'Trip Data',
   color: [0, 0, 0],
   columns: {geojson: {value: '_geojson', fieldIdx: 0}},
+  hidden: false,
   isVisible: true,
   isConfigActive: false,
   highlightColor: [252, 242, 26, 255],

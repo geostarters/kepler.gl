@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,10 +22,11 @@ import React, {Component, useCallback} from 'react';
 import classnames from 'classnames';
 
 import PropTypes from 'prop-types';
-import {sortableContainer, sortableElement} from 'react-sortable-hoc';
+import {SortableContainer, SortableElement} from 'react-sortable-hoc';
 import styled from 'styled-components';
 import {createSelector} from 'reselect';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 import {arrayMove} from 'utils/data-utils';
 
 import LayerPanelFactory from './layer-panel/layer-panel';
@@ -120,7 +121,7 @@ LayerManagerFactory.deps = [AddDataButtonFactory, LayerPanelFactory, SourceDataC
 function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
   // By wrapping layer panel using a sortable element we don't have to implement the drag and drop logic into the panel itself;
   // Developers can provide any layer panel implementation and it will still be sortable
-  const SortableItem = sortableElement(({children, isSorting}) => {
+  const SortableItem = SortableElement(({children, isSorting}) => {
     return (
       <SortableStyledItem className={classnames('sortable-layer-items', {sorting: isSorting})}>
         {children}
@@ -128,7 +129,7 @@ function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
     );
   });
 
-  const SortableContainer = sortableContainer(({children}) => {
+  const WrappedSortableContainer = SortableContainer(({children}) => {
     return <div>{children}</div>;
   });
 
@@ -148,6 +149,7 @@ function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
       layerVisConfigChange: PropTypes.func.isRequired,
       openModal: PropTypes.func.isRequired,
       removeLayer: PropTypes.func.isRequired,
+      duplicateLayer: PropTypes.func.isRequired,
       removeDataset: PropTypes.func.isRequired,
       showDatasetTable: PropTypes.func.isRequired,
       updateLayerBlending: PropTypes.func.isRequired,
@@ -164,7 +166,8 @@ function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
         return {
           id: key,
           label: layer.name,
-          icon: layer.layerIcon
+          icon: layer.layerIcon,
+          requireData: layer.requireData
         };
       })
     );
@@ -203,7 +206,8 @@ function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
         layerTypeChange: this.props.layerTypeChange,
         layerVisConfigChange: this.props.layerVisConfigChange,
         layerTextLabelChange: this.props.layerTextLabelChange,
-        removeLayer: this.props.removeLayer
+        removeLayer: this.props.removeLayer,
+        duplicateLayer: this.props.duplicateLayer
       };
 
       const panelProps = {
@@ -223,7 +227,7 @@ function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
           <AddDataButton onClick={this.props.showAddDataModal} isInactive={!defaultDataset} />
           <SidePanelDivider />
           <SidePanelSection>
-            <SortableContainer
+            <WrappedSortableContainer
               onSortEnd={this._handleSort}
               onSortStart={this._onSortStart}
               updateBeforeSortStart={this._updateBeforeSortStart}
@@ -231,23 +235,26 @@ function LayerManagerFactory(AddDataButton, LayerPanel, SourceDataCatalog) {
               helperClass="sorting-layers"
               useDragHandle
             >
-              {layerOrder.map((layerIdx, index) => (
-                <SortableItem
-                  key={`layer-${layerIdx}`}
-                  index={index}
-                  isSorting={this.state.isSorting}
-                >
-                  <LayerPanel
-                    {...panelProps}
-                    {...layerActions}
-                    sortData={layerIdx}
-                    key={layers[layerIdx].id}
-                    idx={layerIdx}
-                    layer={layers[layerIdx]}
-                  />
-                </SortableItem>
-              ))}
-            </SortableContainer>
+              {layerOrder.map(
+                (layerIdx, index) =>
+                  !layers[layerIdx].config.hidden && (
+                    <SortableItem
+                      key={`layer-${layerIdx}`}
+                      index={index}
+                      isSorting={this.state.isSorting}
+                    >
+                      <LayerPanel
+                        {...panelProps}
+                        {...layerActions}
+                        sortData={layerIdx}
+                        key={layers[layerIdx].id}
+                        idx={layerIdx}
+                        layer={layers[layerIdx]}
+                      />
+                    </SortableItem>
+                  )
+              )}
+            </WrappedSortableContainer>
           </SidePanelSection>
           <SidePanelSection>
             {defaultDataset ? (

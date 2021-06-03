@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -476,7 +476,16 @@ export const parsedConfigV0 = {
       tooltip: {
         enabled: true,
         fieldsToShow: {
-          something: ['begintrip_timestamp_local', 'dropoff_timestamp_local']
+          something: [
+            {
+              name: 'begintrip_timestamp_local',
+              format: null
+            },
+            {
+              name: 'dropoff_timestamp_local',
+              format: null
+            }
+          ]
         }
       },
       brush: {

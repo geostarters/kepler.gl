@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 import styled from 'styled-components';
 import Modal from 'react-modal';
@@ -114,6 +114,7 @@ const defaultCancelButton = {
 };
 
 const defaultConfirmButton = {
+  cta: true,
   large: true,
   width: '160px',
   children: 'modal.button.defaultConfirm'

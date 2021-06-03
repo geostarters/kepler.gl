@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,22 +21,23 @@
 import React, {useMemo, useCallback} from 'react';
 import ItemSelector from 'components/common/item-selector/item-selector';
 import {StyledFilterPanel} from './components';
-import {LAYER_TYPES} from 'constants';
+import {LAYER_TYPES} from 'layers/types';
 
 const layerFilter = layer => layer.type === LAYER_TYPES.point;
 const isAlreadySelected = (selectedLayers, layerId) =>
   selectedLayers.findIndex(l => l.id === layerId) === -1;
 
 function PolygonFilterFactory() {
+  /** @type {typeof import('./polygon-filter').PolygonFilter} */
   const PolygonFilter = React.memo(({filter, layers, setLayers}) => {
     const setNewLayers = useCallback(
       newLayers => {
         return setLayers(newLayers.map(l => l.id));
       },
-      [layers, setLayers]
+      [setLayers]
     );
 
-    const selectedLayers = useMemo(() => layers.filter(l => filter.layerId.includes(l.id)), [
+    const selectedLayers = useMemo(() => layers.filter(l => filter.layerId?.includes(l.id)), [
       filter,
       layers
     ]);

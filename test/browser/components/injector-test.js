@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,8 +61,9 @@ test('Components -> injector -> injectComponents', t => {
 
 test('Components -> injector -> missing deps', t => {
   const spy = sinon.spy(Console, 'error');
-
+  // eslint-disable-next-line react/display-name
   const myCustomNameFactory = () => () => <div className="my-test-header-name">name</div>;
+  // eslint-disable-next-line react/display-name
   const myCustomHeaderFactory = Name => () => (
     <div className="my-test-header-1">
       <Name />
@@ -96,7 +97,7 @@ test('Components -> injector -> missing deps', t => {
 
 test('Components -> injector -> wrong factory type', t => {
   const spy = sinon.spy(Console, 'error');
-  // const spy = sinon.spy(Console, 'error');
+  // eslint-disable-next-line react/display-name
   const myCustomHeaderFactory = Name => () => (
     <div className="my-test-header-2">
       <Name />

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,5 +22,6 @@ import './data-table-modal-test';
 import './save-map-modal-test';
 import './share-map-modal-test';
 import './share-map-modal-test';
+import './export-image-modal-test';
 import './load-data-modal-test';
 import './load-storage-map-test';

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ import {Save, DataTable, Save2, Picture, Db, Map as MapIcon, Share} from 'compon
 import ClickOutsideCloseDropdown from 'components/side-panel/panel-dropdown';
 import Toolbar from 'components/common/toolbar';
 import ToolbarItem from 'components/common/toolbar-item';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const StyledPanelHeader = styled.div.attrs({
   className: 'side-side-panel__header'
@@ -90,7 +90,7 @@ export const PanelAction = ({item, onClick}) => (
   <StyledPanelAction data-tip data-for={`${item.id}-action`} onClick={onClick}>
     {item.label ? <p>{item.label}</p> : null}
     <a target={item.blank ? '_blank' : ''} href={item.href}>
-      <item.iconComponent height="20px" />
+      <item.iconComponent height="20px" {...item.iconComponentProps} />
     </a>
     {item.tooltip ? (
       <Tooltip id={`${item.id}-action`} place="bottom" delayShow={500} effect="solid">
@@ -296,8 +296,9 @@ function PanelHeaderFactory(SaveExportDropdown, CloudStorageDropdown) {
                     onClick={() => {
                       if (item.dropdownComponent) {
                         showExportDropdown(item.id);
+                      } else {
+                        item.onClick && item.onClick(this.props);
                       }
-                      item.onClick();
                     }}
                   />
                   {item.dropdownComponent ? (

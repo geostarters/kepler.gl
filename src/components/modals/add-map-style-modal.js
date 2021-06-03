@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,8 @@ import {media} from 'styles/media-breakpoints';
 
 // Utils
 import {transformRequest} from 'utils/map-style-utils/mapbox-utils';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const MapH = 190;
 const MapW = 264;
@@ -149,7 +150,7 @@ function AddMapStyleModalFactory() {
         });
 
         map.on('error', () => {
-          this.loadMaoStyleError();
+          this.loadMapStyleError();
         });
       }
     }
@@ -180,6 +181,36 @@ function AddMapStyleModalFactory() {
             <StyledModalVerticalPanel>
               <StyledModalSection>
                 <div className="modal-section-title">
+                  <FormattedMessage id={'modal.addStyle.pasteTitle'} />
+                </div>
+                <div className="modal-section-subtitle">
+                  {intl.formatMessage({id: 'modal.addStyle.pasteSubtitle0'})}
+                  <InlineLink
+                    target="_blank"
+                    href="https://www.mapbox.com/help/studio-manual-publish/#style-url"
+                  >
+                    {' '}
+                    {intl.formatMessage({id: 'modal.addStyle.pasteSubtitle2'})}
+                  </InlineLink>{' '}
+                  {intl.formatMessage({id: 'modal.addStyle.pasteSubtitle3'})}
+                  <InlineLink
+                    target="_blank"
+                    href="https://docs.mapbox.com/mapbox-gl-js/style-spec"
+                  >
+                    {' '}
+                    {intl.formatMessage({id: 'modal.addStyle.pasteSubtitle4'})}
+                  </InlineLink>
+                </div>
+                <InputLight
+                  type="text"
+                  value={inputStyle.url || ''}
+                  onChange={({target: {value}}) => this.props.inputMapStyle({url: value})}
+                  placeholder="e.g. mapbox://styles/username/style, http://my.stles.com/xxx/style.json "
+                />
+              </StyledModalSection>
+
+              <StyledModalSection>
+                <div className="modal-section-title">
                   <FormattedMessage id={'modal.addStyle.publishTitle'} />
                 </div>
                 <div className="modal-section-subtitle">
@@ -198,6 +229,7 @@ function AddMapStyleModalFactory() {
                   </InlineLink>{' '}
                   {intl.formatMessage({id: 'modal.addStyle.publishSubtitle4'})}
                 </div>
+
                 <div className="modal-section-subtitle">
                   {intl.formatMessage({id: 'modal.addStyle.publishSubtitle5'})}
                   <InlineLink
@@ -216,27 +248,7 @@ function AddMapStyleModalFactory() {
                   placeholder={intl.formatMessage({id: 'modal.addStyle.exampleToken'})}
                 />
               </StyledModalSection>
-              <StyledModalSection>
-                <div className="modal-section-title">
-                  <FormattedMessage id={'modal.addStyle.pasteTitle'} />
-                </div>
-                <div className="modal-section-subtitle">
-                  {intl.formatMessage({id: 'modal.addStyle.pasteSubtitle1'})}
-                  <InlineLink
-                    target="_blank"
-                    href="https://www.mapbox.com/help/studio-manual-publish/#style-url"
-                  >
-                    {' '}
-                    {intl.formatMessage({id: 'modal.addStyle.pasteSubtitle2'})}
-                  </InlineLink>
-                </div>
-                <InputLight
-                  type="text"
-                  value={inputStyle.url || ''}
-                  onChange={({target: {value}}) => this.props.inputMapStyle({url: value})}
-                  placeholder="e.g. mapbox://styles/uberdataviz/abcdefghijklmnopq"
-                />
-              </StyledModalSection>
+
               <StyledModalSection>
                 <div className="modal-section-title">
                   <FormattedMessage id={'modal.addStyle.namingTitle'} />

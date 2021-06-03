@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -139,6 +139,7 @@ export const config = {
               lat: 'pickup_latitude',
               lng: 'pickup_longitude'
             },
+            hidden: false,
             isVisible: true
           }
         },
@@ -150,6 +151,7 @@ export const config = {
               lat: 'pickup_latitude',
               lng: 'pickup_longitude'
             },
+            hidden: false,
             isVisible: true,
             visConfig: {
               colorRange: {
@@ -174,7 +176,20 @@ export const config = {
                 category: 'Uber',
                 colors: ['#5A1846', '#900C3F', '#C70039', '#E3611C', '#F1920E', '#FFC300']
               }
-            }
+            },
+            textLabel: [
+              {
+                field: {
+                  name: 'pickup_latitude',
+                  type: 'real'
+                },
+                color: [255, 255, 255],
+                size: 18,
+                offset: [0, 0],
+                anchor: 'start',
+                alignment: 'center'
+              }
+            ]
           },
           visualChannels: {
             colorField: {
@@ -197,6 +212,7 @@ export const config = {
               lat1: 'dropoff_latitude',
               lng1: 'dropoff_longitude'
             },
+            hidden: false,
             isVisible: true
           }
         },
@@ -210,6 +226,7 @@ export const config = {
               lat: 'pickup_latitude',
               lng: 'pickup_longitude'
             },
+            hidden: false,
             isVisible: true,
             visConfig: {
               opacity: 0.76,

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,26 +23,27 @@ import test from 'tape-catch';
 import global from 'global';
 import sinon from 'sinon';
 import flatten from 'lodash.flattendeep';
-import {mount} from 'enzyme';
 import {mountWithTheme} from 'test/helpers/component-utils';
 import CloneDeep from 'lodash.clonedeep';
 import * as VisStateActions from 'actions/vis-state-actions';
 import visStateReducer from 'reducers/vis-state';
 
-import FieldToken from 'components/common/field-token';
+import FieldTokenFactory from 'components/common/field-token';
 import {VertThreeDots, ArrowUp} from 'components/common/icons';
 import DataTableModalFactory, {
   DatasetTabs,
   DatasetModalTab
 } from 'components/modals/data-table-modal';
-import {DataTable} from 'components/common/data-table';
+import DataTableFactory from 'components/common/data-table';
 import OptionDropdown from 'components/common/data-table/option-dropdown';
-
 import {testFields, testAllData} from 'test/fixtures/test-csv-data';
 import {geoStyleFields, geoStyleRows} from 'test/fixtures/geojson';
 import {StateWFiles, testCsvDataId, testGeoJsonDataId} from 'test/helpers/mock-state';
+import {appInjector} from '../../../../src/components/container';
 
-const DataTableModal = DataTableModalFactory(DataTable);
+const DataTableModal = appInjector.get(DataTableModalFactory);
+const DataTable = appInjector.get(DataTableFactory);
+const FieldToken = appInjector.get(FieldTokenFactory);
 
 const expectedCellSizeCache = {
   'gps_data.utc_timestamp': {row: 145, header: 150},
@@ -158,17 +159,17 @@ test('Components -> DataTableModal.render: csv 1', t => {
   ];
 
   const expectedColMeta = {
-    'gps_data.utc_timestamp': 'timestamp',
-    'gps_data.lat': 'real',
-    'gps_data.lng': 'real',
-    'gps_data.types': 'string',
-    epoch: 'timestamp',
-    has_result: 'boolean',
-    id: 'integer',
-    time: 'timestamp',
-    begintrip_ts_utc: 'timestamp',
-    begintrip_ts_local: 'timestamp',
-    date: 'date'
+    'gps_data.utc_timestamp': {name: 'gps_data.utc_timestamp', type: 'timestamp'},
+    'gps_data.lat': {name: 'gps_data.lat', type: 'real'},
+    'gps_data.lng': {name: 'gps_data.lng', type: 'real'},
+    'gps_data.types': {name: 'gps_data.types', type: 'string'},
+    epoch: {name: 'epoch', type: 'timestamp'},
+    has_result: {name: 'has_result', type: 'boolean'},
+    id: {name: 'id', type: 'integer'},
+    time: {name: 'time', type: 'timestamp'},
+    begintrip_ts_utc: {name: 'begintrip_ts_utc', type: 'timestamp'},
+    begintrip_ts_local: {name: 'begintrip_ts_local', type: 'timestamp'},
+    date: {name: 'date', type: 'date'}
   };
 
   t.deepEqual(props.columns, expectedColumns, 'DataTable should have the correct props.columns');
@@ -261,14 +262,14 @@ test('Components -> DataTableModal -> render DataTable: csv 1', t => {
     theme: {}
   };
 
-  const wrapper2 = mount(<DataTable {...enriched} />);
-  const componentInstance = wrapper2.instance();
+  const wrapper2 = mountWithTheme(<DataTable {...enriched} />);
+  const componentInstance = wrapper2.find('DataTable').instance();
   const result = componentInstance.getCellSizeCache();
 
   t.deepEqual(result, expectedExpandedCellSize, 'should calculate correct cell expansion');
 
   // manully setting the state and update the component
-  wrapper2.setState(result);
+  componentInstance.setState(result);
   wrapper2.update();
 
   t.equal(
@@ -386,11 +387,11 @@ test('Components -> DataTableModal -> render DataTable: sort and pin', t => {
     theme: {}
   };
 
-  const wrapper2 = mount(<DataTable {...enriched} />);
-  const componentInstance = wrapper2.instance();
+  const wrapper2 = mountWithTheme(<DataTable {...enriched} />);
+  const componentInstance = wrapper2.find('DataTable').instance();
   const result = componentInstance.getCellSizeCache();
-  // manully setting the state and update the component
-  wrapper2.setState(result);
+  // manually setting the state and update the component
+  componentInstance.setState(result);
   wrapper2.update();
 
   const expectedHeaders = [
@@ -406,11 +407,13 @@ test('Components -> DataTableModal -> render DataTable: sort and pin', t => {
     'begintrip_ts_local',
     'date'
   ];
+
   t.equal(
     wrapper2.find('.header-cell').length,
     testFields.length,
     `should render ${testFields.length} headers`
   );
+
   t.ok(
     wrapper2
       .find('.header-cell')
@@ -418,6 +421,7 @@ test('Components -> DataTableModal -> render DataTable: sort and pin', t => {
       .hasClass('pinned-header-cell'),
     'should assign pinned-header-cell class'
   );
+
   t.ok(
     wrapper2
       .find('.header-cell')
@@ -425,6 +429,7 @@ test('Components -> DataTableModal -> render DataTable: sort and pin', t => {
       .hasClass('first-cell'),
     'should assign first-cell class'
   );
+
   new Array(testFields.length).fill(0).forEach((d, i) => {
     t.equal(
       wrapper2
@@ -444,6 +449,54 @@ test('Components -> DataTableModal -> render DataTable: sort and pin', t => {
       .find(ArrowUp).length,
     1,
     'should render sort icon'
+  );
+
+  t.end();
+});
+
+test('Components -> DatableModal -> sort/pin and copy should be called with the right params', t => {
+  const initialState = CloneDeep(StateWFiles.visState);
+  const copyTableColumn = sinon.spy();
+  const pinTableColumn = sinon.spy();
+  const sortTableColumn = sinon.spy();
+  const column = 'gps_data.lat';
+
+  const wrapper = mountWithTheme(
+    <DataTableModal
+      datasets={initialState.datasets}
+      dataId={testCsvDataId}
+      copyTableColumn={copyTableColumn}
+      pinTableColumn={pinTableColumn}
+      sortTableColumn={sortTableColumn}
+    />
+  );
+
+  const {
+    sortTableColumn: testSortColumn,
+    pinTableColumn: testPinColumn,
+    copyTableColumn: testCopyColumn
+  } = wrapper.find('DataTable').props();
+
+  testSortColumn(column);
+  testPinColumn(column);
+  testCopyColumn(column);
+
+  t.equal(
+    sortTableColumn.calledWith(testCsvDataId, column),
+    true,
+    'should call sortTableColumn with dataId and column gps_data.lat'
+  );
+
+  t.equal(
+    pinTableColumn.calledWith(testCsvDataId, column),
+    true,
+    'should call pinTableColumn with dataId and column gps_data.lat'
+  );
+
+  t.equal(
+    copyTableColumn.calledWith(testCsvDataId, column),
+    true,
+    'should call copyTableColumn with dataId and column gps_data.lat'
   );
 
   t.end();
@@ -476,9 +529,9 @@ test('Components -> cellSize -> renderedSize', t => {
     .props();
 
   const expected = {
-    _geojson: {row: 400, header: 91},
-    'income level of people over 65': {row: 117, header: 150},
-    engagement: {row: 117, header: 110}
+    _geojson: {row: 400, header: 96},
+    'income level of people over 65': {row: 85, header: 150},
+    engagement: {row: 127, header: 115}
   };
 
   t.deepEqual(
@@ -537,12 +590,13 @@ test('Components -> DataTableModal.render: csv 2', t => {
     },
     ghost: 334
   };
-  const wrapper2 = mount(<DataTable {...enriched} />);
-  const componentInstance = wrapper2.instance();
+  const wrapper2 = mountWithTheme(<DataTable {...enriched} />);
+  const componentInstance = wrapper2.find('DataTable').instance();
+
   const result = componentInstance.getCellSizeCache();
   t.deepEqual(result, expectedExpandedCellSizeGeo, 'should calculate correct cell expansion');
 
-  wrapper2.setState(result);
+  componentInstance.setState(result);
   wrapper2.update();
 
   t.equal(wrapper2.find('.header-cell').length, 7, `should render 7 header cells`);

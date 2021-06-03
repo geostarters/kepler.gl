@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,28 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// to use, copy, modify, merge_, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
-import {toggleModalUpdater, loadFilesSuccessUpdater} from './ui-state-updaters';
+import {
+  toggleModalUpdater,
+  loadFilesSuccessUpdater as uiStateLoadFilesSuccessUpdater
+} from './ui-state-updaters';
 import {
   updateVisDataUpdater as visStateUpdateVisDataUpdater,
   setMapInfoUpdater
@@ -47,10 +29,9 @@ import {
 import {receiveMapConfigUpdater as stateMapConfigUpdater} from './map-state-updaters';
 import {receiveMapConfigUpdater as styleMapConfigUpdater} from './map-style-updaters';
 import {findMapBounds} from 'utils/data-utils';
-import KeplerGlSchema from 'schemas';
 import {isPlainObject} from 'utils/utils';
 import {filesToDataPayload} from 'processors/file-handler';
-import Console from 'global/console';
+import {payload_, apply_, with_, if_, compose_, merge_, pick_} from './composer-helpers';
 
 // compose action to apply result multiple reducers, with the output of one
 
@@ -95,7 +76,9 @@ import Console from 'global/console';
  *
  * export default composedReducer;
  */
+
 /* eslint-disable no-unused-vars */
+// @ts-ignore
 const combinedUpdaters = null;
 /* eslint-enable no-unused-vars */
 
@@ -104,43 +87,9 @@ export const isValidConfig = config =>
 
 export const defaultAddDataToMapOptions = {
   centerMap: true,
-  keepExistingConfig: false
+  keepExistingConfig: false,
+  autoCreateLayers: true
 };
-
-const identity = state => state;
-
-/* eslint-disable-next-line no-unused-vars */
-function log(text) {
-  return value => Console.log(text, value);
-}
-
-function payload_(p) {
-  return {payload: p};
-}
-
-function apply_(updater, payload) {
-  return state => updater(state, payload);
-}
-
-function with_(fn) {
-  return state => fn(state)(state);
-}
-
-function if_(pred, fn) {
-  return pred ? fn : identity;
-}
-
-function compose_(fns) {
-  return state => fns.reduce((state2, fn) => fn(state2), state);
-}
-
-function merge_(obj) {
-  return state => ({...state, ...obj});
-}
-
-function pick_(prop) {
-  return fn => state => ({...state, [prop]: fn(state[prop])});
-}
 
 /**
  * Combine data and full configuration update in a single action
@@ -149,18 +98,23 @@ function pick_(prop) {
  * @param {Object} state kepler.gl instance state, containing all subreducer state
  * @param {Object} action
  * @param {Object} action.payload `{datasets, options, config}`
- * @param {Array<Object>|Object} action.payload.datasets - ***required** datasets can be a dataset or an array of datasets
+ * @param action.payload.datasets - ***required** datasets can be a dataset or an array of datasets
  * Each dataset object needs to have `info` and `data` property.
- * @param {Object} action.payload.datasets.info -info of a dataset
- * @param {string} action.payload.datasets.info.id - id of this dataset. If config is defined, `id` should matches the `dataId` in config.
- * @param {string} action.payload.datasets.info.label - A display name of this dataset
- * @param {Object} action.payload.datasets.data - ***required** The data object, in a tabular format with 2 properties `fields` and `rows`
- * @param {Array<Object>} action.payload.datasets.data.fields - ***required** Array of fields,
- * @param {string} action.payload.datasets.data.fields.name - ***required** Name of the field,
- * @param {Array<Array>} action.payload.datasets.data.rows - ***required** Array of rows, in a tabular format with `fields` and `rows`
- * @param {Object} action.payload.options option object `{centerMap: true}`
- * @param {Object} action.payload.config map config
- * @returns {Object} nextState
+ * @param [action.payload.options] option object `{centerMap: true}`
+ * @param [action.payload.config] map config
+ * @param [action.payload.info] map info contains title and description
+ * @returns nextState
+ *
+ * @typedef {Object} Dataset
+ * @property info -info of a dataset
+ * @property info.id - id of this dataset. If config is defined, `id` should matches the `dataId` in config.
+ * @property info.label - A display name of this dataset
+ * @property data - ***required** The data object, in a tabular format with 2 properties `fields` and `rows`
+ * @property data.fields - ***required** Array of fields,
+ * @property data.fields.name - ***required** Name of the field,
+ * @property data.rows - ***required** Array of rows, in a tabular format with `fields` and `rows`
+ *
+ * @type {typeof import('./combined-updaters').addDataToMapUpdater}
  * @public
  */
 export const addDataToMapUpdater = (state, {payload}) => {
@@ -175,10 +129,16 @@ export const addDataToMapUpdater = (state, {payload}) => {
 
   if (isValidConfig(config)) {
     // if passed in saved config
-    parsedConfig = KeplerGlSchema.parseSavedConfig(config);
+    parsedConfig = state.visState.schema.parseSavedConfig(config);
   }
   const oldLayers = state.visState.layers;
   const filterNewlyAddedLayers = layers => layers.filter(nl => !oldLayers.find(ol => ol === nl));
+
+  // Returns undefined if not found, to make typescript happy
+  const findMapBoundsIfCentered = layers => {
+    const bounds = options.centerMap && findMapBounds(layers);
+    return bounds ? bounds : undefined;
+  };
 
   return compose_([
     pick_('visState')(
@@ -198,9 +158,7 @@ export const addDataToMapUpdater = (state, {payload}) => {
           payload_({
             config: parsedConfig,
             options,
-            bounds: options.centerMap
-              ? findMapBounds(filterNewlyAddedLayers(visState.layers))
-              : null
+            bounds: findMapBoundsIfCentered(filterNewlyAddedLayers(visState.layers))
           })
         )
       )
@@ -208,7 +166,7 @@ export const addDataToMapUpdater = (state, {payload}) => {
 
     pick_('mapStyle')(apply_(styleMapConfigUpdater, payload_({config: parsedConfig, options}))),
 
-    pick_('uiState')(apply_(loadFilesSuccessUpdater)),
+    pick_('uiState')(apply_(uiStateLoadFilesSuccessUpdater, payload_(null))),
 
     pick_('uiState')(apply_(toggleModalUpdater, payload_(null))),
 
@@ -216,20 +174,25 @@ export const addDataToMapUpdater = (state, {payload}) => {
   ])(state);
 };
 
-export const loadFileSuccessUpdater = (state, action) => {
+/**
+ * @type {typeof import('./combined-updaters').loadFilesSuccessUpdater}
+ */
+export const loadFilesSuccessUpdater = (state, action) => {
   // still more to load
   const payloads = filesToDataPayload(action.result);
   const nextState = compose_([
     pick_('visState')(
       merge_({
         fileLoading: false,
-        fileLoadingProgress: 100
+        fileLoadingProgress: {}
       })
     )
   ])(state);
-
   // make multiple add data to map calls
-  return compose_(payloads.map(p => apply_(addDataToMapUpdater, payload_(p))))(nextState);
+  const stateWithData = compose_(payloads.map(p => apply_(addDataToMapUpdater, payload_(p))))(
+    nextState
+  );
+  return stateWithData;
 };
 
 export const addDataToMapComposed = addDataToMapUpdater;

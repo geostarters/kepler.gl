@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 import {createStore, combineReducers, applyMiddleware, compose} from 'redux';
-import keplerGlReducer from 'kepler.gl/reducers';
+import keplerGlReducer, {uiStateUpdaters} from 'kepler.gl/reducers';
 import {enhanceReduxMiddleware} from 'kepler.gl/middleware';
 import appReducer from './app-reducer';
 import window from 'global/window';
@@ -32,6 +32,7 @@ const customizedKeplerGlReducer = keplerGlReducer
 
       // customize which map control button to show
       mapControls: {
+        ...uiStateUpdaters.DEFAULT_MAP_CONTROLS,
         visibleLayers: {
           show: false
         },

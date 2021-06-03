@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,10 +38,10 @@ const StyledButton = styled.button`
   }
 `;
 const noop = () => {};
-const TableHeaderButton = ({onClick = noop, disabled, text, children, ...props}) => (
+const Button = ({onClick = noop, disabled = false, text = '', children, ...props}) => (
   <StyledButton {...props} onClick={disabled ? null : onClick}>
     {text || children}
   </StyledButton>
 );
 
-export default TableHeaderButton;
+export default Button;

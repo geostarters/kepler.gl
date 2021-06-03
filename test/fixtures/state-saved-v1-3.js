@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -355,14 +355,15 @@ mergedLayer0.config = {
       value: null
     }
   },
+  hidden: false,
   isVisible: true,
   colorField: {
     name: 'deliver_radius',
     type: 'integer',
-    id: 'deliver_radius',
     format: '',
-    tableFieldIndex: 1,
-    analyzerType: 'INT'
+    fieldIdx: 0,
+    analyzerType: 'INT',
+    valueAccessor: values => values[0]
   },
   colorDomain: [1000, 1000, 2000, 2000, 2000, 3000, 3000, 3000, 3000],
   highlightColor: [252, 242, 26, 255],
@@ -374,10 +375,10 @@ mergedLayer0.config = {
   sizeField: {
     name: 'deliver_radius',
     type: 'integer',
-    id: 'deliver_radius',
     format: '',
-    tableFieldIndex: 1,
-    analyzerType: 'INT'
+    fieldIdx: 0,
+    analyzerType: 'INT',
+    valueAccessor: values => values[0]
   },
   sizeScale: 'sqrt',
   sizeDomain: [1000, 3000],
@@ -431,6 +432,7 @@ mergedLayer1.config = {
       fieldIdx: 2
     }
   },
+  hidden: false,
   isVisible: true,
   colorField: null,
   colorDomain: [0, 1],
@@ -461,6 +463,7 @@ mergedLayer1.config = {
     percentile: [0, 96.54],
     elevationPercentile: [0, 100],
     elevationScale: 5,
+    enableElevationZoomFactor: true,
     colorAggregation: 'average',
     sizeAggregation: 'average',
     enable3d: false

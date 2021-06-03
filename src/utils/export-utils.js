@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// @ts-nocheck
 import domtoimage from 'utils/dom-to-image';
 import {Blob, URL, atob, Uint8Array, ArrayBuffer, document} from 'global/window';
 import {
@@ -31,8 +32,6 @@ import {exportMapToHTML} from 'templates/export-map-html';
 import {formatCsv} from 'processors/data-processor';
 import get from 'lodash.get';
 import {set, generateHashId} from 'utils/utils';
-
-import KeplerGlSchema from 'schemas';
 
 /**
  * Default file names
@@ -58,16 +57,14 @@ export function isMSEdge(window) {
   return Boolean(window.navigator && window.navigator.msSaveOrOpenBlob);
 }
 
-export function getScaleFromImageSize(imageW, imageH, mapW, mapH) {
+export function getScaleFromImageSize(imageW = 0, imageH = 0, mapW = 0, mapH = 0) {
   if ([imageW, imageH, mapW, mapH].some(d => d <= 0)) {
     return 1;
   }
 
   const base = imageW / imageH > 1 ? imageW : imageH;
   const mapBase = imageW / imageH > 1 ? mapW : mapH;
-  const scale = base / mapBase;
-
-  return scale;
+  return base / mapBase;
 }
 
 export function calculateExportImageSize({mapW, mapH, ratio, resolution}) {
@@ -154,12 +151,13 @@ export function exportToJsonString(data) {
 
 export function getMapJSON(state, options = DEFAULT_EXPORT_JSON_SETTINGS) {
   const {hasData} = options;
+  const schema = state.visState.schema;
 
   if (!hasData) {
-    return KeplerGlSchema.getConfigToSave(state);
+    return schema.getConfigToSave(state);
   }
 
-  let mapToSave = KeplerGlSchema.save(state);
+  let mapToSave = schema.save(state);
   // add file name if title is not provided
   const title = get(mapToSave, ['info', 'title']);
   if (!title || !title.length) {

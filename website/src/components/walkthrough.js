@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,8 +40,7 @@ const VideoContainer = styled.div`
   width: 640px;
   ${media.portable`
     width: 500px;
-  `}
-  ${media.palm`
+  `} ${media.palm`
     width: 100%;
   `};
 

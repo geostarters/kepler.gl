@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import JSONPretty from 'react-json-pretty';
-import {GITHUB_ADD_DATA_TO_MAP} from 'constants/user-guides';
+import {ADD_DATA_TO_MAP_DOC} from 'constants/user-guides';
 import styled from 'styled-components';
 import {StyledExportSection} from 'components/common/styled-components';
 import {StyledExportMapSection, StyledWarning, ExportMapLink} from './components';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const StyledJsonExportSection = styled(StyledExportSection)`
   .note {
@@ -57,7 +57,7 @@ const exportJsonPropTypes = {
   options: PropTypes.object
 };
 
-const ExportJsonMap = React.memo(({config = {}}) => (
+const ExportJsonMapUnmemoized = ({config = {}}) => (
   <div>
     <StyledExportMapSection>
       <div className="description" />
@@ -72,7 +72,7 @@ const ExportJsonMap = React.memo(({config = {}}) => (
         </div>
         <div className="subtitle">
           <FormattedMessage id={'modal.exportMap.json.configDisclaimer'} />
-          <ExportMapLink href={GITHUB_ADD_DATA_TO_MAP}>addDataToMap</ExportMapLink>.
+          <ExportMapLink href={ADD_DATA_TO_MAP_DOC}>addDataToMap</ExportMapLink>.
         </div>
       </div>
       <div className="selection">
@@ -87,11 +87,13 @@ const ExportJsonMap = React.memo(({config = {}}) => (
       </div>
     </StyledJsonExportSection>
   </div>
-));
+);
 
-ExportJsonMap.propTypes = exportJsonPropTypes;
+ExportJsonMapUnmemoized.propTypes = exportJsonPropTypes;
 
-ExportJsonMap.displayName = 'ExportJsonMap';
+ExportJsonMapUnmemoized.displayName = 'ExportJsonMap';
+
+const ExportJsonMap = React.memo(ExportJsonMapUnmemoized);
 
 const ExportJsonMapFactory = () => ExportJsonMap;
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -76,6 +76,7 @@ export const config = {
               lng: 'gps_data.lng',
               altitude: null
             },
+            hidden: false,
             isVisible: true,
             visConfig: {
               radius: 39.2,
@@ -137,6 +138,7 @@ export const config = {
               lat: 'gps_data.lat',
               lng: 'gps_data.lng'
             },
+            hidden: false,
             isVisible: true,
             visConfig: {
               opacity: 0.8,
@@ -153,6 +155,7 @@ export const config = {
               percentile: [0, 100],
               elevationPercentile: [0, 100],
               elevationScale: 5,
+              enableElevationZoomFactor: true,
               colorAggregation: 'count',
               sizeAggregation: 'count',
               enable3d: false
@@ -185,6 +188,9 @@ export const config = {
         },
         brush: {
           size: 0.5,
+          enabled: false
+        },
+        geocoder: {
           enabled: false
         }
       },
@@ -446,93 +452,97 @@ export const wktCsv = `a_zip,simplified_shape_v2,simplified_shape,m_rate,c_zip_t
 7023,"{""type"":""LineString"",""coordinates"":[[-74.387589,40.632238],[-74.387589,40.632238]]}","LINESTRING (-74.387589 40.632238, -74.387589 40.632238)",7.6,C_Medium_High,29.2
 `;
 
-// csv data
+// output of processCsvData
 export const testFields = [
   {
     type: 'timestamp',
+    fieldIdx: 0,
     name: 'gps_data.utc_timestamp',
     format: 'YYYY-M-D H:m:s',
-    tableFieldIndex: 1,
-    analyzerType: 'DATETIME'
+    analyzerType: 'DATETIME',
+    valueAccessor: values => values[0]
   },
   {
     type: 'real',
+    fieldIdx: 1,
     name: 'gps_data.lat',
     format: '',
-    tableFieldIndex: 2,
-    analyzerType: 'FLOAT'
+    analyzerType: 'FLOAT',
+    valueAccessor: values => values[1]
   },
   {
     type: 'real',
+    fieldIdx: 2,
     name: 'gps_data.lng',
     format: '',
-    tableFieldIndex: 3,
-    analyzerType: 'FLOAT'
+    analyzerType: 'FLOAT',
+    valueAccessor: values => values[2]
   },
   {
     type: 'string',
+    fieldIdx: 3,
     name: 'gps_data.types',
     format: '',
-    tableFieldIndex: 4,
-    analyzerType: 'STRING'
+    analyzerType: 'STRING',
+    valueAccessor: values => values[3]
   },
   {
     type: 'timestamp',
+    fieldIdx: 4,
     name: 'epoch',
     format: 'X',
-    tableFieldIndex: 5,
-    analyzerType: 'TIME'
+    analyzerType: 'TIME',
+    valueAccessor: values => values[4]
   },
   {
     type: 'boolean',
+    fieldIdx: 5,
     name: 'has_result',
     format: '',
-    tableFieldIndex: 6,
-    analyzerType: 'BOOLEAN'
+    analyzerType: 'BOOLEAN',
+    valueAccessor: values => values[5]
   },
   {
     type: 'integer',
+    fieldIdx: 6,
     name: 'id',
     format: '',
-    tableFieldIndex: 7,
-    analyzerType: 'INT'
+    analyzerType: 'INT',
+    valueAccessor: values => values[6]
   },
   {
     type: 'timestamp',
+    fieldIdx: 7,
     name: 'time',
     format: 'YYYY-M-DTHH:mm:ss.SSSS',
-    tableFieldIndex: 8,
-    analyzerType: 'DATETIME'
+    analyzerType: 'DATETIME',
+    valueAccessor: values => values[7]
   },
   {
     type: 'timestamp',
+    fieldIdx: 8,
     name: 'begintrip_ts_utc',
     format: 'YYYY-M-D HH:mm:ssZZ',
-    tableFieldIndex: 9,
-    analyzerType: 'DATETIME'
+    analyzerType: 'DATETIME',
+    valueAccessor: values => values[8]
   },
   {
     type: 'timestamp',
+    fieldIdx: 9,
     name: 'begintrip_ts_local',
     format: 'YYYY-M-D HH:mm:ssZZ',
-    tableFieldIndex: 10,
-    analyzerType: 'DATETIME'
+    analyzerType: 'DATETIME',
+    valueAccessor: values => values[9]
   },
   {
     type: 'date',
+    fieldIdx: 10,
     name: 'date',
     format: 'YYYY-M-D',
-    tableFieldIndex: 11,
-    analyzerType: 'DATE'
+    analyzerType: 'DATE',
+    valueAccessor: values => values[10]
   }
 ];
-
-// add id to fields
-// TODO: cleaning up after filter refractor
-export const datasetCsvFields = testFields.map(f => ({
-  ...f,
-  id: f.name
-}));
 
 export const timeMappedValue = [
   1474588800000,
@@ -780,18 +790,20 @@ export const timeFilterProps = {
   enlarged: true,
   fixedDomain: true,
   gpu: true,
-  value: [1474588800000, 1474617600000]
+  value: [1474588800000, 1474617600000],
+  defaultTimeFormat: 'L LTS'
 };
 
 export const mergedTimeFilter = {
   ...timeFilterProps,
+  animationWindow: 'free',
   dataId: [dataId],
   freeze: true,
   id: 'time-0',
   fixedDomain: true,
   enlarged: true,
   isAnimating: false,
-  speed: 1,
+  speed: 4,
   name: ['time'],
   type: 'timeRange',
   fieldIdx: [7],
@@ -813,17 +825,19 @@ export const epochFilterProps = {
   enlarged: true,
   fixedDomain: true,
   gpu: true,
-  value: [1472688000000, 1472774400000]
+  value: [1472688000000, 1472774400000],
+  defaultTimeFormat: 'L LTS'
 };
 
 // value set mockStateWithFilters 1472700000000, 1472760000000
 export const mergedEpochFilter = {
   ...epochFilterProps,
+  animationWindow: 'free',
   dataId: [dataId],
   freeze: true,
   id: 'epoch-1',
   fixedDomain: true,
-  enlarged: true,
+  enlarged: false,
   isAnimating: false,
   speed: 1,
   name: ['epoch'],
@@ -847,6 +861,7 @@ export const dateFilterProps = {
 
 export const mergedDateFilter = {
   ...dateFilterProps,
+  animationWindow: 'free',
   dataId: [dataId],
   freeze: true,
   id: 'date-2',
@@ -868,43 +883,49 @@ export const wktCsvFields = [
     type: 'integer',
     name: 'a_zip',
     format: '',
-    tableFieldIndex: 1,
-    analyzerType: 'INT'
+    fieldIdx: 0,
+    analyzerType: 'INT',
+    valueAccessor: values => values[0]
   },
   {
     type: 'geojson',
     name: 'simplified_shape_v2',
     format: '',
-    tableFieldIndex: 2,
-    analyzerType: 'PAIR_GEOMETRY_FROM_STRING'
+    fieldIdx: 1,
+    analyzerType: 'PAIR_GEOMETRY_FROM_STRING',
+    valueAccessor: values => values[1]
   },
   {
     type: 'geojson',
     name: 'simplified_shape',
     format: '',
-    tableFieldIndex: 3,
-    analyzerType: 'GEOMETRY_FROM_STRING'
+    fieldIdx: 2,
+    analyzerType: 'GEOMETRY_FROM_STRING',
+    valueAccessor: values => values[2]
   },
   {
     type: 'real',
     name: 'm_rate',
     format: '',
-    tableFieldIndex: 4,
-    analyzerType: 'FLOAT'
+    fieldIdx: 3,
+    analyzerType: 'FLOAT',
+    valueAccessor: values => values[3]
   },
   {
     type: 'string',
     name: 'c_zip_type',
     format: '',
-    tableFieldIndex: 5,
-    analyzerType: 'STRING'
+    fieldIdx: 4,
+    analyzerType: 'STRING',
+    valueAccessor: values => values[4]
   },
   {
     type: 'real',
     name: 'c_number',
     format: '',
-    tableFieldIndex: 6,
-    analyzerType: 'FLOAT'
+    fieldIdx: 5,
+    analyzerType: 'FLOAT',
+    valueAccessor: values => values[5]
   }
 ];
 

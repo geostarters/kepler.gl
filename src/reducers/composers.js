@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ import * as combinedUpdaters from './combined-updaters';
  */
 const actionHandler = {
   [ActionTypes.ADD_DATA_TO_MAP]: combinedUpdaters.addDataToMapUpdater,
-  [ActionTypes.LOAD_FILES_SUCCESS]: combinedUpdaters.loadFileSuccessUpdater
+  [ActionTypes.LOAD_FILES_SUCCESS]: combinedUpdaters.loadFilesSuccessUpdater
 };
 
 export default actionHandler;

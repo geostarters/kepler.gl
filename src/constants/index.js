@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@ export {
   ALL_FIELD_TYPES,
   DATA_TABLE_ID,
   DATASET_FORMATS,
-  DEFAULT_COLOR_RANGE,
   DEFAULT_LAYER_GROUPS,
   DEFAULT_MAP_STYLES,
   DEFAULT_NOTIFICATION_TOPICS,
@@ -51,7 +50,6 @@ export {
   KEPLER_GL_VERSION,
   KEPLER_GL_WEBSITE,
   LAYER_BLENDINGS,
-  LAYER_TYPES,
   MAX_DEFAULT_TOOLTIPS,
   PANELS,
   SIDEBAR_PANELS,
@@ -59,10 +57,19 @@ export {
   THEME,
   TRIP_ARC_FIELDS,
   TRIP_POINT_FIELDS,
-  LOCALES
+  BASE_SPEED,
+  FPS,
+  ANIMATION_WINDOW,
+  DEFAULT_TIME_FORMAT,
+  SPEED_CONTROL_RANGE,
+  RESOLUTIONS,
+  SORT_ORDER
 } from './default-settings';
 
-export {GITHUB_BUG_REPORT, GITHUB_USER_GUIDE} from './user-guides';
+export {BUG_REPORT_LINK, USER_GUIDE_DOC} from './user-guides';
 
 export {VizColorPalette, DataVizColors} from './custom-color-ranges';
-export {COLOR_RANGES, DefaultColorRange} from './color-ranges';
+export {COLOR_RANGES, DEFAULT_COLOR_RANGE} from './color-ranges';
+export {default as KeyEvent} from './keyevent';
+export {LAYER_TYPES} from 'layers/types';
+export {PLOT_TYPES} from 'utils/filter-utils';

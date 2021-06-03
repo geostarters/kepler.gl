@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,10 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import AnimationSpeedSlider from './animation-speed-slider';
+import AnimationSpeedSliderFactory from './animation-speed-slider';
 import {Button, CenterFlexbox} from 'components/common/styled-components';
 import {Rocket} from 'components/common/icons';
+import {preciseRound} from 'utils/data-utils';
 
 const StyledSpeedToggle = styled.div`
   display: flex;
@@ -37,7 +38,9 @@ const StyledSpeedText = styled.div`
   text-align: left;
 `;
 
-function SpeedControlFactory() {
+SpeedControlFactory.deps = [AnimationSpeedSliderFactory];
+
+function SpeedControlFactory(AnimationSpeedSlider) {
   const SpeedControl = ({
     onClick,
     updateAnimationSpeed,
@@ -51,7 +54,7 @@ function SpeedControlFactory() {
           <Rocket height={buttonHeight} />
         </CenterFlexbox>
         <StyledSpeedText style={{visibility: !showSpeedControl ? 'visible' : 'hidden'}}>
-          {speed}x
+          {preciseRound(speed, 1)}x
         </StyledSpeedText>
       </Button>
       {showSpeedControl ? (

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,8 @@ import {
   mergeLayers,
   mergeInteractions,
   mergeLayerBlending,
-  mergeSplitMaps
+  mergeSplitMaps,
+  insertLayerAtRightOrder
 } from 'reducers/vis-state-merger';
 
 import SchemaManager from 'schemas';
@@ -89,7 +90,7 @@ import {
 } from 'test/helpers/mock-state';
 
 import {
-  datasetCsvFields,
+  testFields,
   testAllData,
   timeFilterProps,
   dateFilterProps,
@@ -100,7 +101,7 @@ import {
 } from 'test/fixtures/test-csv-data';
 
 import {
-  datasetFields as testGeoJsonFields,
+  fields,
   datasetAllData as testGeoJsonAllData,
   geoJsonRateFilterProps,
   geoJsonTripFilterProps,
@@ -246,6 +247,22 @@ test('VisStateMerger.v1 -> mergeFilters -> toWorkingState', t => {
   t.end();
 });
 
+test('VisStateMerger -> mergeLayers -> invalid layer config', t => {
+  const oldState = cloneDeep(InitialState);
+  const oldVisState = oldState.visState;
+
+  const layers = [
+    {id: 'abc'},
+    {type: 'taro'}, // no type
+    {type: 'point', id: 'yes'} // no config
+  ];
+  const mergedState = mergeLayers(oldVisState, layers, true);
+
+  t.equal(mergedState.layers, oldVisState.layers, 'merge invalid layer should not error');
+  t.deepEqual(mergedState.layerToBeMerged, layers, 'layerToBeMerged should contain invalid layers');
+  t.end();
+});
+
 test('VisStateMerger.current -> mergeLayers -> toEmptyState', t => {
   const stateToSave = cloneDeep(StateWFilesFiltersLayerColor);
   const appStateToSave = SchemaManager.save(stateToSave);
@@ -256,9 +273,8 @@ test('VisStateMerger.current -> mergeLayers -> toEmptyState', t => {
   const oldVisState = oldState.visState;
 
   const parsedLayers = configParsed.visState.layers;
-
   // mergeLayers
-  const mergedState = mergeLayers(oldState.visState, parsedLayers);
+  const mergedState = mergeLayers(oldState.visState, parsedLayers, true);
 
   Object.keys(oldVisState).forEach(key => {
     if (key === 'layerToBeMerged') {
@@ -285,6 +301,72 @@ test('VisStateMerger.current -> mergeLayers -> toEmptyState', t => {
   t.end();
 });
 
+test('visStateMerger -> mergeLayer -> imcremental load', t => {
+  const stateToSave = cloneDeep(StateWFilesFiltersLayerColor);
+  const appStateToSave = SchemaManager.save(stateToSave);
+  const {datasets, config} = appStateToSave;
+
+  const [dataset1, dataset2] = datasets;
+  // load config first
+  const stateWithConfig = coreReducer(stateToSave, addDataToMap({config}));
+
+  t.deepEqual(
+    stateWithConfig.visState.preserveLayerOrder,
+    ['hexagon-2', 'point-0', 'geojson-1'],
+    'shoud preserve layer order'
+  );
+
+  t.deepEqual(
+    stateWithConfig.visState.layerToBeMerged.map(l => l.id),
+    ['hexagon-2', 'point-0', 'geojson-1'],
+    'should save to layerToBeMerged'
+  );
+
+  // load dataset2
+  const parsedData2 = SchemaManager.parseSavedData([dataset2]);
+  const stateWithData2 = coreReducer(stateWithConfig, addDataToMap({datasets: parsedData2}));
+  t.deepEqual(
+    stateWithData2.visState.preserveLayerOrder,
+    ['hexagon-2', 'point-0', 'geojson-1'],
+    'shoud preserve layer order'
+  );
+
+  t.deepEqual(
+    stateWithData2.visState.layers.map(l => l.id),
+    ['geojson-1'],
+    'shoud load geojeon layer'
+  );
+
+  t.deepEqual(stateWithData2.visState.layerOrder, [0], 'layerOrder should be correct');
+  t.deepEqual(
+    stateWithData2.visState.layerToBeMerged.map(l => l.id),
+    ['hexagon-2', 'point-0'],
+    'should save to layerToBeMerged'
+  );
+
+  // load dataset1
+  const parsedData1 = SchemaManager.parseSavedData([dataset1]);
+  const stateWithData1 = coreReducer(stateWithData2, addDataToMap({datasets: parsedData1}));
+  t.deepEqual(
+    stateWithData1.visState.preserveLayerOrder,
+    ['hexagon-2', 'point-0', 'geojson-1'],
+    'shoud preserve layer order'
+  );
+  t.deepEqual(
+    stateWithData1.visState.layers.map(l => l.id),
+    ['geojson-1', 'hexagon-2', 'point-0'],
+    'shoud load 2 layers'
+  );
+  t.deepEqual(stateWithData1.visState.layerOrder, [1, 2, 0], 'layerOrder should be correct');
+  t.deepEqual(
+    stateWithData1.visState.layerToBeMerged.map(l => l.id),
+    [],
+    'layerToBeMerged should be empty'
+  );
+
+  t.end();
+});
+
 test('VisStateMerger.v1 -> mergeLayers -> toEmptyState', t => {
   const savedConfig = cloneDeep(savedStateV1);
   const parsedConfig = SchemaManager.parseSavedConfig(savedConfig.config);
@@ -295,7 +377,7 @@ test('VisStateMerger.v1 -> mergeLayers -> toEmptyState', t => {
   const parsedLayers = parsedConfig.visState.layers;
 
   // mergeLayers
-  const mergedState = mergeLayers(oldState.visState, parsedLayers);
+  const mergedState = mergeLayers(oldState.visState, parsedLayers, true);
 
   Object.keys(oldVisState).forEach(key => {
     if (key === 'layerToBeMerged') {
@@ -328,7 +410,7 @@ test('VisStateMerger.v1.label -> mergeLayers -> toEmptyState', t => {
   const parsedLayers = parsedConfig.visState.layers;
 
   // mergeLayers
-  const mergedState = mergeLayers(oldState.visState, parsedLayers);
+  const mergedState = mergeLayers(oldState.visState, parsedLayers, true);
 
   Object.keys(oldVisState).forEach(key => {
     if (key === 'layerToBeMerged') {
@@ -363,6 +445,7 @@ test('VisStateMerger.v1.split -> mergeLayers -> toEmptyState', t => {
 
   // merge State
   const mergedState = visStateReducer(oldVisState, receiveMapConfig(parsedConfig));
+
   Object.keys(oldVisState).forEach(key => {
     if (key === 'layerToBeMerged') {
       t.deepEqual(
@@ -372,7 +455,7 @@ test('VisStateMerger.v1.split -> mergeLayers -> toEmptyState', t => {
       );
     } else if (key === 'splitMaps') {
       t.deepEqual(mergedState.splitMaps, [], 'Should wait to merge splitMaps');
-    } else if (key === 'splitMaps') {
+    } else if (key === 'splitMapsToBeMerged') {
       t.deepEqual(
         mergedState.splitMapsToBeMerged,
         expectedConfig,
@@ -413,7 +496,7 @@ test('VisStateMerger.v0 -> mergeLayers -> toWorkingState', t => {
   const parsedLayers = parsedConfig.visState.layers;
 
   // mergeLayers
-  const mergedState = mergeLayers(oldState.visState, parsedLayers);
+  const mergedState = mergeLayers(oldState.visState, parsedLayers, true);
 
   Object.keys(oldVisState).forEach(key => {
     if (key === 'layerToBeMerged') {
@@ -457,7 +540,7 @@ test('VisStateMerger.v1 -> mergeLayers -> toWorkingState', t => {
   const parsedLayers = parsedConfig.visState.layers;
 
   // mergeLayers
-  const mergedState = mergeLayers(oldState.visState, parsedLayers);
+  const mergedState = mergeLayers(oldState.visState, parsedLayers, true);
 
   Object.keys(oldVisState).forEach(key => {
     if (key === 'layerToBeMerged') {
@@ -504,8 +587,30 @@ test('VisStateMerger.v0 -> mergeInteractions -> toEmptyState', t => {
         {
           tooltip: {
             fieldsToShow: {
-              '9h10t7fyb': ['int_range', 'detail', 'type_boolean'],
-              v79816te8: ['ID', 'ZIP_CODE']
+              '9h10t7fyb': [
+                {
+                  name: 'int_range',
+                  format: null
+                },
+                {
+                  name: 'detail',
+                  format: null
+                },
+                {
+                  name: 'type_boolean',
+                  format: null
+                }
+              ],
+              v79816te8: [
+                {
+                  name: 'ID',
+                  format: null
+                },
+                {
+                  name: 'ZIP_CODE',
+                  format: null
+                }
+              ]
             },
             enabled: true
           }
@@ -545,7 +650,24 @@ test('VisStateMerger.v0 -> mergeInteractions -> toWorkingState', t => {
     ...oldVisState.interactionToBeMerged,
     tooltip: {
       fieldsToShow: {
-        milkshake: ['have', 'a', 'good', 'day']
+        milkshake: [
+          {
+            name: 'have',
+            format: null
+          },
+          {
+            name: 'a',
+            format: null
+          },
+          {
+            name: 'good',
+            format: null
+          },
+          {
+            name: 'day',
+            format: null
+          }
+        ]
       }
     }
   };
@@ -560,8 +682,30 @@ test('VisStateMerger.v0 -> mergeInteractions -> toWorkingState', t => {
   const expectedInteractionToBeMerged = {
     tooltip: {
       fieldsToShow: {
-        '9h10t7fyb': ['int_range', 'detail', 'type_boolean'],
-        v79816te8: ['ID', 'ZIP_CODE']
+        '9h10t7fyb': [
+          {
+            name: 'int_range',
+            format: null
+          },
+          {
+            name: 'detail',
+            format: null
+          },
+          {
+            name: 'type_boolean',
+            format: null
+          }
+        ],
+        v79816te8: [
+          {
+            name: 'ID',
+            format: null
+          },
+          {
+            name: 'ZIP_CODE',
+            format: null
+          }
+        ]
       },
       enabled: true
     }
@@ -591,17 +735,77 @@ test('VisStateMerger.v0 -> mergeInteractions -> toWorkingState', t => {
       ...defaultInteraction.tooltip,
       enabled: true,
       config: {
+        compareMode: false,
+        compareType: 'absolute',
         fieldsToShow: {
           [testCsvDataId]: [
-            'gps_data.utc_timestamp',
-            'gps_data.types',
-            'epoch',
-            'has_result',
-            'id'
+            {
+              name: 'gps_data.utc_timestamp',
+              format: null
+            },
+            {
+              name: 'gps_data.types',
+              format: null
+            },
+            {
+              name: 'epoch',
+              format: null
+            },
+            {
+              name: 'has_result',
+              format: null
+            },
+            {
+              name: 'id',
+              format: null
+            }
           ],
-          [testGeoJsonDataId]: ['OBJECTID', 'ZIP_CODE', 'ID', 'TRIPS', 'RATE'],
-          '9h10t7fyb': ['int_range', 'detail', 'type_boolean'],
-          v79816te8: ['ID', 'ZIP_CODE']
+          [testGeoJsonDataId]: [
+            {
+              name: 'OBJECTID',
+              format: null
+            },
+            {
+              name: 'ZIP_CODE',
+              format: null
+            },
+            {
+              name: 'ID',
+              format: null
+            },
+            {
+              name: 'TRIPS',
+              format: null
+            },
+            {
+              name: 'RATE',
+              format: null
+            }
+          ],
+          '9h10t7fyb': [
+            {
+              name: 'int_range',
+              format: null
+            },
+            {
+              name: 'detail',
+              format: null
+            },
+            {
+              name: 'type_boolean',
+              format: null
+            }
+          ],
+          v79816te8: [
+            {
+              name: 'ID',
+              format: null
+            },
+            {
+              name: 'ZIP_CODE',
+              format: null
+            }
+          ]
         }
       }
     }
@@ -633,7 +837,20 @@ test('VisStateMerger.v1 -> mergeInteractions -> toEmptyState', t => {
         {
           tooltip: {
             fieldsToShow: {
-              a5ybmwl2d: ['a_zip', 'str_type', 'int_type']
+              a5ybmwl2d: [
+                {
+                  name: 'a_zip',
+                  format: null
+                },
+                {
+                  name: 'str_type',
+                  format: null
+                },
+                {
+                  name: 'int_type',
+                  format: null
+                }
+              ]
             },
             enabled: false
           }
@@ -649,7 +866,9 @@ test('VisStateMerger.v1 -> mergeInteractions -> toEmptyState', t => {
             ...defaultInteraction.tooltip,
             enabled: false,
             config: {
-              fieldsToShow: {}
+              fieldsToShow: {},
+              compareMode: false,
+              compareType: 'absolute'
             }
           },
           brush: {
@@ -689,7 +908,24 @@ test('VisStateMerger.v1 -> mergeInteractions -> toWorkingState', t => {
     ...oldVisState.interactionToBeMerged,
     tooltip: {
       fieldsToShow: {
-        milkshake: ['have', 'a', 'good', 'day']
+        milkshake: [
+          {
+            name: 'have',
+            format: null
+          },
+          {
+            name: 'a',
+            format: null
+          },
+          {
+            name: 'good',
+            format: null
+          },
+          {
+            name: 'day',
+            format: null
+          }
+        ]
       }
     }
   };
@@ -705,7 +941,20 @@ test('VisStateMerger.v1 -> mergeInteractions -> toWorkingState', t => {
   const expectedInteractionToBeMerged = {
     tooltip: {
       fieldsToShow: {
-        a5ybmwl2d: ['a_zip', 'str_type', 'int_type']
+        a5ybmwl2d: [
+          {
+            name: 'a_zip',
+            format: null
+          },
+          {
+            name: 'str_type',
+            format: null
+          },
+          {
+            name: 'int_type',
+            format: null
+          }
+        ]
       },
       enabled: false
     }
@@ -727,15 +976,53 @@ test('VisStateMerger.v1 -> mergeInteractions -> toWorkingState', t => {
             ...defaultInteraction.tooltip,
             enabled: false,
             config: {
+              compareMode: false,
+              compareType: 'absolute',
               fieldsToShow: {
                 [testCsvDataId]: [
-                  'gps_data.utc_timestamp',
-                  'gps_data.types',
-                  'epoch',
-                  'has_result',
-                  'id'
+                  {
+                    name: 'gps_data.utc_timestamp',
+                    format: null
+                  },
+                  {
+                    name: 'gps_data.types',
+                    format: null
+                  },
+                  {
+                    name: 'epoch',
+                    format: null
+                  },
+                  {
+                    name: 'has_result',
+                    format: null
+                  },
+                  {
+                    name: 'id',
+                    format: null
+                  }
                 ],
-                [testGeoJsonDataId]: ['OBJECTID', 'ZIP_CODE', 'ID', 'TRIPS', 'RATE']
+                [testGeoJsonDataId]: [
+                  {
+                    name: 'OBJECTID',
+                    format: null
+                  },
+                  {
+                    name: 'ZIP_CODE',
+                    format: null
+                  },
+                  {
+                    name: 'ID',
+                    format: null
+                  },
+                  {
+                    name: 'TRIPS',
+                    format: null
+                  },
+                  {
+                    name: 'RATE',
+                    format: null
+                  }
+                ]
               }
             }
           },
@@ -771,16 +1058,67 @@ test('VisStateMerger.v1 -> mergeInteractions -> toWorkingState', t => {
       ...defaultInteraction.tooltip,
       enabled: false,
       config: {
+        compareMode: false,
+        compareType: 'absolute',
         fieldsToShow: {
           [testCsvDataId]: [
-            'gps_data.utc_timestamp',
-            'gps_data.types',
-            'epoch',
-            'has_result',
-            'id'
+            {
+              name: 'gps_data.utc_timestamp',
+              format: null
+            },
+            {
+              name: 'gps_data.types',
+              format: null
+            },
+            {
+              name: 'epoch',
+              format: null
+            },
+            {
+              name: 'has_result',
+              format: null
+            },
+            {
+              name: 'id',
+              format: null
+            }
           ],
-          [testGeoJsonDataId]: ['OBJECTID', 'ZIP_CODE', 'ID', 'TRIPS', 'RATE'],
-          a5ybmwl2d: ['a_zip', 'str_type', 'int_type']
+          [testGeoJsonDataId]: [
+            {
+              name: 'OBJECTID',
+              format: null
+            },
+            {
+              name: 'ZIP_CODE',
+              format: null
+            },
+            {
+              name: 'ID',
+              format: null
+            },
+            {
+              name: 'TRIPS',
+              format: null
+            },
+            {
+              name: 'RATE',
+              format: null
+            }
+          ],
+          a5ybmwl2d: [
+            {
+              name: 'a_zip',
+              format: null
+            },
+            {
+              name: 'str_type',
+              format: null
+            },
+            {
+              name: 'int_type',
+              format: null
+            }
+          ]
         }
       }
     },
@@ -861,8 +1199,31 @@ test('VisStateMerger.v1 -> mergeInteractions -> coordinate', t => {
       ...defaultInteraction.tooltip,
       enabled: false,
       config: {
+        compareMode: false,
+        compareType: 'absolute',
         fieldsToShow: {
-          a5ybmwl2d: ['a_zip', 'zip_area', 'avg_number', 'str_type', 'int_type']
+          a5ybmwl2d: [
+            {
+              name: 'a_zip',
+              format: null
+            },
+            {
+              name: 'zip_area',
+              format: null
+            },
+            {
+              name: 'avg_number',
+              format: null
+            },
+            {
+              name: 'str_type',
+              format: null
+            },
+            {
+              name: 'int_type',
+              format: null
+            }
+          ]
         }
       }
     },
@@ -985,7 +1346,8 @@ test('VisStateMerger - mergeSplitMaps -> split to split', t => {
 test('VisStateMerger - mergeSplitMaps', t => {
   const testState1 = {
     layers: [],
-    splitMaps: [{layers: {a: true}}, {layers: {a: false}}]
+    splitMaps: [{layers: {a: true}}, {layers: {a: false}}],
+    splitMapsToBeMerged: []
   };
 
   t.deepEqual(
@@ -1004,7 +1366,8 @@ test('VisStateMerger - mergeSplitMaps', t => {
 
   const testState2 = {
     layers: [{id: 'c', config: {isVisible: true}}],
-    splitMaps: [{layers: {a: true}}, {layers: {a: false}}]
+    splitMaps: [{layers: {a: true}}, {layers: {a: false}}],
+    splitMapsToBeMerged: []
   };
 
   t.deepEqual(
@@ -1019,7 +1382,8 @@ test('VisStateMerger - mergeSplitMaps', t => {
 
   const testState3 = {
     layers: [{id: 'c', config: {isVisible: true}}],
-    splitMaps: []
+    splitMaps: [],
+    splitMapsToBeMerged: []
   };
   t.deepEqual(
     mergeSplitMaps(testState3, testSM),
@@ -1037,7 +1401,8 @@ test('VisStateMerger - mergeSplitMaps', t => {
       {id: 'b', config: {isVisible: false}},
       {id: 'c', config: {isVisible: true}}
     ],
-    splitMaps: []
+    splitMaps: [],
+    splitMapsToBeMerged: []
   };
   t.deepEqual(
     mergeSplitMaps(testState4, testSM),
@@ -1141,7 +1506,11 @@ test('VisStateMerger.v1 -> mergeFilters -> multiFilters', t => {
   // and field has filterProps
   const expectedDatasets = {
     [testCsvDataId]: {
-      fields: datasetCsvFields.map(f => ({
+      metadata: {
+        id: testCsvDataId,
+        label: 'hello.csv'
+      },
+      fields: testFields.map(f => ({
         ...f,
         ...(f.name === 'time'
           ? {filterProps: timeFilterProps}
@@ -1212,10 +1581,20 @@ test('VisStateMerger.v1 -> mergeFilters -> multiFilters', t => {
           ],
           result: [1474588800000 - 1474588800000, 1472688000000 - 1472688000000, 0, 0]
         }
+      },
+      changedFilters: {
+        dynamicDomain: {'date-2': 'added'},
+        fixedDomain: {'time-0': 'added', 'epoch-4': 'added'},
+        cpu: {'date-2': 'added'},
+        gpu: {'time-0': 'added', 'epoch-4': 'added'}
       }
     },
     [testGeoJsonDataId]: {
-      fields: testGeoJsonFields.map(f => ({
+      metadata: {
+        id: testGeoJsonDataId,
+        label: 'zip.geojson'
+      },
+      fields: fields.map(f => ({
         ...f,
         ...(f.name === 'TRIPS'
           ? {filterProps: geoJsonTripFilterProps}
@@ -1259,7 +1638,13 @@ test('VisStateMerger.v1 -> mergeFilters -> multiFilters', t => {
       color: 'donot test me',
       filteredIndex: [0],
       filteredIndexForDomain: [0],
-      fieldPairs: oldGeoJsonData.fieldPairs
+      fieldPairs: oldGeoJsonData.fieldPairs,
+      changedFilters: {
+        dynamicDomain: {'RATE-1': 'added', 'TRIPS-3': 'added'},
+        fixedDomain: null,
+        cpu: {'RATE-1': 'added'},
+        gpu: {'TRIPS-3': 'added'}
+      }
     }
   };
 
@@ -1307,5 +1692,81 @@ test('VisStateMerger -> import polygon filter map', t => {
 
   // parsed filters must be empty
   cmpFilters(t, [], stateWData.filters);
+  t.end();
+});
+
+test('VisStateMerger -> insertLayerAtRightOrder -> to empty config', t => {
+  const preservedOrder = ['a', 'b', 'c', 'd'];
+
+  const batches = [
+    {load: [{id: 'b'}], expectedLayers: [{id: 'b'}], expectedOrder: [0]},
+    {
+      load: [{id: 'a'}, {id: 'c'}],
+      expectedLayers: [{id: 'b'}, {id: 'a'}, {id: 'c'}],
+      expectedOrder: [1, 0, 2]
+    },
+    {
+      load: [{id: 'd'}],
+      expectedLayers: [{id: 'b'}, {id: 'a'}, {id: 'c'}, {id: 'd'}],
+      expectedOrder: [1, 0, 2, 3]
+    }
+  ];
+
+  let currentLayers = [];
+  let currentOrder = [];
+
+  // add layers in batch
+  for (const batch of batches) {
+    const {newLayerOrder, newLayers} = insertLayerAtRightOrder(
+      currentLayers,
+      batch.load,
+      currentOrder,
+      preservedOrder
+    );
+    currentLayers = newLayers;
+    currentOrder = newLayerOrder;
+
+    t.deepEqual(currentLayers, batch.expectedLayers, 'Should insert layer at correct Order');
+    t.deepEqual(currentOrder, batch.expectedOrder, 'Should reconstruct layer order');
+  }
+
+  t.end();
+});
+
+test('VisStateMerger -> insertLayerAtRightOrder -> to empty config', t => {
+  const preservedOrder = ['a', 'b', 'c', 'd'];
+
+  const batches = [
+    {load: [{id: 'b'}], expectedLayers: [{id: 'm'}, {id: 'b'}], expectedOrder: [1, 0]},
+    {
+      load: [{id: 'a'}, {id: 'c'}],
+      expectedLayers: [{id: 'm'}, {id: 'b'}, {id: 'a'}, {id: 'c'}],
+      expectedOrder: [2, 1, 3, 0]
+    },
+    {
+      load: [{id: 'd'}],
+      expectedLayers: [{id: 'm'}, {id: 'b'}, {id: 'a'}, {id: 'c'}, {id: 'd'}],
+      expectedOrder: [2, 1, 3, 4, 0]
+    }
+  ];
+
+  let currentLayers = [{id: 'm'}];
+  let currentOrder = [0];
+
+  // add layers in batch
+  for (const batch of batches) {
+    const {newLayerOrder, newLayers} = insertLayerAtRightOrder(
+      currentLayers,
+      batch.load,
+      currentOrder,
+      preservedOrder
+    );
+    currentLayers = newLayers;
+    currentOrder = newLayerOrder;
+
+    t.deepEqual(currentLayers, batch.expectedLayers, 'Should insert layer at correct Order');
+    t.deepEqual(currentOrder, batch.expectedOrder, 'Should reconstruct layer order');
+  }
+
   t.end();
 });

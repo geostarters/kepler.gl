@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import {
 } from 'test/helpers/layer-utils';
 
 import {KeplerGlLayers} from 'layers';
+import {copyTable, copyTableAndUpdate} from 'utils/table-utils/kepler-table';
 
 const {LineLayer} = KeplerGlLayers;
 const columns = {
@@ -83,10 +84,7 @@ test('#LineLayer -> formatLayerData', t => {
         id: 'test_layer_0'
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -107,7 +105,7 @@ test('#LineLayer -> formatLayerData', t => {
             }
           ],
           getFilterValue: () => {},
-          getSourceColor: () => {},
+          getColor: () => {},
           getTargetColor: () => {},
           getWidth: () => {}
         };
@@ -119,12 +117,8 @@ test('#LineLayer -> formatLayerData', t => {
           'layerData should have 6 keys'
         );
         t.deepEqual(layerData.data, expectedLayerData.data, 'should format correct line layerData');
-        // getSourceColor
-        t.deepEqual(
-          layerData.getSourceColor,
-          layer.config.color,
-          'getSourceColor should be a constant'
-        );
+        // getColor
+        t.deepEqual(layerData.getColor, layer.config.color, 'getColor should be a constant');
         // getTargetColor
         t.deepEqual(
           layerData.getTargetColor,
@@ -163,7 +157,7 @@ test('#LineLayer -> formatLayerData', t => {
         id: 'test_layer_2'
       },
       datasets: {
-        [dataId]: preparedDataset
+        [dataId]: copyTable(preparedDataset)
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -171,7 +165,7 @@ test('#LineLayer -> formatLayerData', t => {
         const expectedLayerData = {
           data: [],
           getFilterValue: () => {},
-          getSourceColor: () => {},
+          getColor: () => {},
           getTargetColor: () => {},
           getWidth: () => {}
         };
@@ -182,13 +176,9 @@ test('#LineLayer -> formatLayerData', t => {
           expectedDataKeys,
           'layerData should have 6 keys'
         );
-        // getSourceColor
-        t.deepEqual(
-          layerData.getSourceColor,
-          layer.config.color,
-          'getSourceColor should be a constant'
-        );
-        // getSourceColor
+        // getColor
+        t.deepEqual(layerData.getColor, layer.config.color, 'getColor should be a constant');
+        // getColor
         t.deepEqual(layerData.getTargetColor, [1, 2, 3], 'getTargetColors should be a constant');
       }
     },
@@ -221,10 +211,7 @@ test('#LineLayer -> formatLayerData', t => {
         id: 'test_layer_1'
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData} = result;
@@ -245,7 +232,7 @@ test('#LineLayer -> formatLayerData', t => {
             }
           ],
           getFilterValue: () => {},
-          getSourceColor: () => {},
+          getColor: () => {},
           getTargetColor: () => {},
           getWidth: () => {}
         };
@@ -261,16 +248,16 @@ test('#LineLayer -> formatLayerData', t => {
           expectedLayerData.data,
           'should format correct line layerData data'
         );
-        // getSourceColor
+        // getColor
         // domain: ['driver_analytics', 'driver_analytics_0', 'driver_gps']
         // range ['#010101', '#020202', '#030303']
         t.deepEqual(
-          layerData.data.map(layerData.getSourceColor),
+          layerData.data.map(layerData.getColor),
           [
             [2, 2, 2],
             [1, 1, 1]
           ],
-          'getSourceColor should be correct'
+          'getColor should be correct'
         );
         // getTargetColor
         // domain: ['driver_analytics', 'driver_analytics_0', 'driver_gps']

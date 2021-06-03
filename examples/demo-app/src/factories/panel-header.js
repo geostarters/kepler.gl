@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 import {PanelHeaderFactory, Icons} from 'kepler.gl/components';
-import {GITHUB_BUG_REPORT, GITHUB_USER_GUIDE} from 'kepler.gl/constants';
+import {BUG_REPORT_LINK, USER_GUIDE_DOC} from 'kepler.gl/constants';
 
 export function CustomPanelHeaderFactory(...deps) {
   const PanelHeader = PanelHeaderFactory(...deps);
@@ -30,7 +30,7 @@ export function CustomPanelHeaderFactory(...deps) {
       {
         id: 'bug',
         iconComponent: Icons.Bug,
-        href: GITHUB_BUG_REPORT,
+        href: BUG_REPORT_LINK,
         blank: true,
         tooltip: 'Bug Report',
         onClick: () => {}
@@ -38,7 +38,7 @@ export function CustomPanelHeaderFactory(...deps) {
       {
         id: 'docs',
         iconComponent: Icons.Docs,
-        href: GITHUB_USER_GUIDE,
+        href: USER_GUIDE_DOC,
         blank: true,
         tooltip: 'User Guide',
         onClick: () => {}

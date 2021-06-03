@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ import {isValidFilterValue} from 'utils/filter-utils';
 import {LAYER_VIS_CONFIGS} from 'layers/layer-factory';
 import Schema from './schema';
 import cloneDeep from 'lodash.clonedeep';
+import {notNullorUndefined} from 'utils/data-utils';
 
 /**
  * V0 Schema
@@ -233,6 +234,7 @@ export const layerPropsV0 = {
   label: new LayerConfigSchemaV0({key: 'label'}),
   color: new LayerConfigSchemaV0({key: 'color'}),
   isVisible: new LayerConfigSchemaV0({key: 'isVisible'}),
+  hidden: new LayerConfigSchemaV0({key: 'hidden'}),
 
   // convert visConfig
   visConfig: new LayerVisConfigSchemaV0({key: 'visConfig'}),
@@ -307,22 +309,6 @@ class TextLabelSchemaV1 extends Schema {
 }
 
 const visualChannelModificationV1 = {
-  point: (vc, parents, accumulator) => {
-    const [layer] = parents.slice(-1);
-
-    if (layer.config.visConfig.outline && vc.colorField && !vc.hasOwnProperty('strokeColorField')) {
-      // point layer now supports both outline and fill
-      // for older schema where filled has not been added to point layer
-      // copy colorField, colorScale to strokeColorField, and strokeColorScale
-      return {
-        strokeColorField: vc.colorField,
-        strokeColorScale: vc.colorScale,
-        colorField: null,
-        colorScale: 'quantile'
-      };
-    }
-    return {};
-  },
   geojson: (vc, parents, accumulator) => {
     const [layer] = parents.slice(-1);
     const isOld = !vc.hasOwnProperty('strokeColorField');
@@ -463,6 +449,7 @@ export const layerPropsV1 = {
       visConfig: new VisConfigSchemaV1({
         version: VERSIONS.v1
       }),
+      hidden: null,
       textLabel: new TextLabelSchemaV1({
         version: VERSIONS.v1,
         key: 'textLabel'
@@ -475,7 +462,7 @@ export const layerPropsV1 = {
   })
 };
 
-class LayerSchemaV0 extends Schema {
+export class LayerSchemaV0 extends Schema {
   key = 'layers';
 
   save(layers, parents) {
@@ -500,7 +487,7 @@ class LayerSchemaV0 extends Schema {
   }
 }
 
-class FilterSchemaV0 extends Schema {
+export class FilterSchemaV0 extends Schema {
   key = 'filters';
   save(filters) {
     return {
@@ -520,58 +507,85 @@ class InteractionSchemaV0 extends Schema {
   key = 'interactionConfig';
 
   save(interactionConfig) {
-    return {
-      [this.key]: this.properties.reduce(
-        (accu, key) => ({
-          ...accu,
-          ...(interactionConfig[key].enabled ? {[key]: interactionConfig[key].config} : {})
-        }),
-        {}
-      )
-    };
+    return Array.isArray(this.properties)
+      ? {
+          [this.key]: this.properties.reduce(
+            (accu, key) => ({
+              ...accu,
+              ...(interactionConfig[key].enabled ? {[key]: interactionConfig[key].config} : {})
+            }),
+            {}
+          )
+        }
+      : {};
   }
   load(interactionConfig) {
     // convert v0 -> v1
     // return enabled: false if disabled,
-    return {
-      [this.key]: this.properties.reduce(
-        (accu, key) => ({
-          ...accu,
-          ...{
-            [key]: {
-              ...(interactionConfig[key] || {}),
-              enabled: Boolean(interactionConfig[key])
-            }
-          }
-        }),
-        {}
-      )
-    };
+    return Array.isArray(this.properties)
+      ? {
+          [this.key]: this.properties.reduce(
+            (accu, key) => ({
+              ...accu,
+              ...{
+                [key]: {
+                  ...(interactionConfig[key] || {}),
+                  enabled: Boolean(interactionConfig[key])
+                }
+              }
+            }),
+            {}
+          )
+        }
+      : {};
   }
 }
 
-const interactionPropsV1 = [...interactionPropsV0, 'coordinate'];
+const interactionPropsV1 = [...interactionPropsV0, 'geocoder', 'coordinate'];
 
-class InteractionSchemaV1 extends Schema {
+export class InteractionSchemaV1 extends Schema {
   key = 'interactionConfig';
 
   save(interactionConfig) {
     // save config even if disabled,
-    return {
-      [this.key]: this.properties.reduce(
-        (accu, key) => ({
-          ...accu,
-          [key]: {
-            ...interactionConfig[key].config,
-            enabled: interactionConfig[key].enabled
-          }
-        }),
-        {}
-      )
-    };
+    return Array.isArray(this.properties)
+      ? {
+          [this.key]: this.properties.reduce(
+            (accu, key) => ({
+              ...accu,
+              [key]: {
+                ...interactionConfig[key].config,
+                enabled: interactionConfig[key].enabled
+              }
+            }),
+            {}
+          )
+        }
+      : {};
   }
   load(interactionConfig) {
-    return {[this.key]: interactionConfig};
+    const modifiedConfig = interactionConfig;
+    Object.keys(interactionConfig).forEach(configType => {
+      if (configType === 'tooltip') {
+        const fieldsToShow = modifiedConfig[configType].fieldsToShow;
+        if (!notNullorUndefined(fieldsToShow)) {
+          return {[this.key]: modifiedConfig};
+        }
+        Object.keys(fieldsToShow).forEach(key => {
+          fieldsToShow[key] = fieldsToShow[key].map(fieldData => {
+            if (!fieldData.name) {
+              return {
+                name: fieldData,
+                format: null
+              };
+            }
+            return fieldData;
+          });
+        });
+      }
+      return;
+    });
+    return {[this.key]: modifiedConfig};
   }
 }
 
@@ -631,6 +645,7 @@ export class SplitMapsSchema extends Schema {
 export const filterPropsV1 = {
   ...filterPropsV0,
   plotType: null,
+  animationWindow: null,
   yAxis: new DimensionFieldSchema({
     version: VERSIONS.v1,
     key: 'yAxis',
@@ -641,7 +656,8 @@ export const filterPropsV1 = {
   }),
 
   // polygon filter properties
-  layerId: null
+  layerId: null,
+  speed: null
 };
 
 export const propertiesV0 = {

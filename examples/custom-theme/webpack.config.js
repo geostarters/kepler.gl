@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,12 +46,6 @@ const CONFIG = {
         loader: 'babel-loader',
         include: join(__dirname, 'src'),
         exclude: [/node_modules/]
-      },
-      {
-        // The example has some JSON data
-        test: /\.json$/,
-        loader: 'json-loader',
-        exclude: [/node_modules/]
       }
     ]
   },
@@ -60,13 +54,8 @@ const CONFIG = {
     fs: 'empty'
   },
 
-  // to support browser history api and remove the '#' sign
-  devServer: {
-    historyApiFallback: true
-  },
-
   // Optional: Enables reading mapbox and dropbox client token from environment variable
-  plugins: [new webpack.EnvironmentPlugin(['MapboxAccessToken', 'DropboxClientId'])]
+  plugins: [new webpack.EnvironmentPlugin(['MapboxAccessToken'])]
 };
 
 // This line enables bundling against src in this repo rather than installed deck.gl module

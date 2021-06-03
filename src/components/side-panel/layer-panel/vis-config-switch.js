@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-import InfoHelper from 'components/common/info-helper';
+import InfoHelperFacotry from 'components/common/info-helper';
 import Switch from 'components/common/switch';
 import {SidePanelSection, PanelLabel} from 'components/common/styled-components';
 import {capitalizeFirstLetter} from 'utils/utils';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const propTypes = {
   layer: PropTypes.object.isRequired,
@@ -45,39 +45,42 @@ const StyledVisConfigSwitch = styled.div`
   }
 `;
 
-const VisConfigSwitch = ({
-  layer: {id, config},
-  property,
-  onChange,
-  label,
-  description,
-  disabled
-}) => (
-  <SidePanelSection disabled={Boolean(disabled)}>
-    <StyledVisConfigSwitch className="vis-config-switch">
-      <div className="vis-config-switch__title">
-        {label ? (
-          <PanelLabel>
-            {(label && <FormattedMessage id={label} />) || capitalizeFirstLetter(property)}
-          </PanelLabel>
-        ) : null}
-        {description ? (
-          <div>
-            <InfoHelper description={description} id={`${id}-${property}-description`} />
-          </div>
-        ) : null}
-      </div>
-      <div className="vis-config-switch__switch">
-        <Switch
-          checked={config.visConfig[property]}
-          id={`${id}-${property}-switch`}
-          onChange={() => onChange({[property]: !config.visConfig[property]})}
-        />
-      </div>
-    </StyledVisConfigSwitch>
-  </SidePanelSection>
-);
+VisConfigSwitchFactory.deps = [InfoHelperFacotry];
+function VisConfigSwitchFactory(InfoHelper) {
+  const VisConfigSwitch = ({
+    layer: {id, config},
+    property,
+    onChange,
+    label,
+    description,
+    disabled
+  }) => (
+    <SidePanelSection disabled={Boolean(disabled)}>
+      <StyledVisConfigSwitch className="vis-config-switch">
+        <div className="vis-config-switch__title">
+          {label ? (
+            <PanelLabel>
+              {(label && <FormattedMessage id={label} />) || capitalizeFirstLetter(property)}
+            </PanelLabel>
+          ) : null}
+          {description ? (
+            <div>
+              <InfoHelper description={description} id={`${id}-${property}-description`} />
+            </div>
+          ) : null}
+        </div>
+        <div className="vis-config-switch__switch">
+          <Switch
+            checked={config.visConfig[property]}
+            id={`${id}-${property}-switch`}
+            onChange={() => onChange({[property]: !config.visConfig[property]})}
+          />
+        </div>
+      </StyledVisConfigSwitch>
+    </SidePanelSection>
+  );
 
-VisConfigSwitch.propTypes = propTypes;
-
-export default VisConfigSwitch;
+  VisConfigSwitch.propTypes = propTypes;
+  return VisConfigSwitch;
+}
+export default VisConfigSwitchFactory;

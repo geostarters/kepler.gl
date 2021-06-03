@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,17 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import React, {Component} from 'react';
+import React, {useCallback, useMemo} from 'react';
 import styled from 'styled-components';
-import moment from 'moment';
-import {requestAnimationFrame, cancelAnimationFrame} from 'global/window';
 
 import Slider from 'components/common/slider/slider';
 import {BottomWidgetInner} from 'components/common/styled-components';
-import SpeedControlFactory from './speed-control';
-import AnimationPlaybacksFactory from './playback-controls';
+import PlaybackControlsFactory from './playback-controls';
 import FloatingTimeDisplayFactory from './floating-time-display';
-import {BASE_SPEED} from 'constants/default-settings';
+import {snapToMarks} from 'utils/data-utils';
+import {DEFAULT_TIME_FORMAT} from 'constants/default-settings';
+import {datetimeFormatter} from 'utils/data-utils';
 
 const SliderWrapper = styled.div`
   display: flex;
@@ -44,144 +43,111 @@ const AnimationWidgetInner = styled.div`
   align-items: center;
   height: 32px;
 
-  .animation-control__speed-control {
-    margin-right: -10px;
-
-    .animation-control__speed-slider {
-      right: calc(0% - 10px);
-    }
+  .playback-controls {
+    margin-left: -8px;
+    margin-right: 16px;
   }
 `;
 
-const StyledDomain = styled.div`
+const StyledDomain = styled.div.attrs({
+  className: 'animation-control__time-domain'
+})`
   color: ${props => props.theme.titleTextColor};
   font-weight: 400;
   font-size: 10px;
 `;
 
-const defaultTimeFormat = 'MM/DD/YY hh:mm:ss';
-const BUTTON_HEIGHT = '18px';
+AnimationControlFactory.deps = [PlaybackControlsFactory, FloatingTimeDisplayFactory];
 
-AnimationControlFactory.deps = [
-  SpeedControlFactory,
-  AnimationPlaybacksFactory,
-  FloatingTimeDisplayFactory
-];
+function AnimationControlFactory(PlaybackControls, FloatingTimeDisplay) {
+  const AnimationControl = ({
+    isAnimatable,
+    isAnimating,
+    resetAnimation,
+    toggleAnimation,
+    setLayerAnimationTime,
+    updateAnimationSpeed,
+    animationConfig
+  }) => {
+    const {
+      currentTime,
+      domain,
+      speed,
+      step,
+      timeSteps,
+      timeFormat,
+      timezone,
+      defaultTimeFormat
+    } = animationConfig;
+    const onSlider1Change = useCallback(
+      val => {
+        if (Array.isArray(timeSteps)) {
+          setLayerAnimationTime(snapToMarks(val, timeSteps));
 
-function AnimationControlFactory(SpeedControl, AnimationPlaybacks, FloatingTimeDisplay) {
-  class AnimationControl extends Component {
-    constructor(props) {
-      super(props);
-      this.state = {
-        isAnimating: false,
-        width: 288,
-        showSpeedControl: false
-      };
-      this._animation = null;
-    }
+          // TODO: merge slider in to avoid this step
+        } else if (val >= domain[0] && val <= domain[1]) {
+          setLayerAnimationTime(val);
+        }
+      },
+      [domain, timeSteps, setLayerAnimationTime]
+    );
 
-    componentDidUpdate() {
-      if (!this._animation && this.state.isAnimating) {
-        this._animation = requestAnimationFrame(this._nextFrame);
-      }
-    }
+    const dateFunc = useMemo(() => {
+      const hasUserFormat = typeof timeFormat === 'string';
+      const currentFormat = (hasUserFormat ? timeFormat : defaultTimeFormat) || DEFAULT_TIME_FORMAT;
+      return datetimeFormatter(timezone)(currentFormat);
+    }, [timeFormat, defaultTimeFormat, timezone]);
 
-    onSlider1Change = val => {
-      const {domain} = this.props.animationConfig;
-      if (val >= domain[0] && val <= domain[1]) {
-        this.props.updateAnimationTime(val);
-      }
-    };
+    const timeStart = useMemo(() => (domain ? dateFunc(domain[0]) : ''), [domain, dateFunc]);
+    const timeEnd = useMemo(() => (domain ? dateFunc(domain[1]) : ''), [domain, dateFunc]);
 
-    _updateAnimationTime = () => {
-      const {domain} = this.props.animationConfig;
-      this.props.updateAnimationTime(domain[0]);
-      this._startAnimation();
-    };
-
-    _startAnimation = () => {
-      this._pauseAnimation();
-      this.setState({isAnimating: true});
-    };
-
-    _nextFrame = () => {
-      this._animation = null;
-      const {currentTime, domain, speed = 1} = this.props.animationConfig;
-      const adjustedSpeed = ((domain[1] - domain[0]) / BASE_SPEED) * speed;
-      const nextTime = currentTime + speed > domain[1] ? domain[0] : currentTime + adjustedSpeed;
-      this.props.updateAnimationTime(nextTime);
-    };
-
-    _pauseAnimation = () => {
-      if (this._animation) {
-        cancelAnimationFrame(this._animation);
-        this._animation = null;
-      }
-      this.setState({isAnimating: false});
-    };
-
-    toggleSpeedControl = () => {
-      this.setState({showSpeedControl: !this.state.showSpeedControl});
-    };
-
-    onChange = () => {
-      this.toggleSpeedControl();
-    };
-
-    render() {
-      const {currentTime, domain, speed} = this.props.animationConfig;
-      const {showSpeedControl} = this.state;
-
-      return (
-        <BottomWidgetInner className="bottom-widget--inner">
-          <AnimationWidgetInner className="animation-widget--inner">
-            <div style={{marginLeft: '-10px'}}>
-              <AnimationPlaybacks
-                className="animation-control-playpause"
-                startAnimation={this._startAnimation}
-                isAnimating={this.state.isAnimating}
-                pauseAnimation={this._pauseAnimation}
-                resetAnimation={this._resetAnimation}
-                buttonHeight={BUTTON_HEIGHT}
-                buttonStyle="link"
-              />
-            </div>
-            <StyledDomain className="animation-control__time-domain">
-              <span>{moment.utc(domain[0]).format(defaultTimeFormat)}</span>
-            </StyledDomain>
-            <SliderWrapper className="animation-control__slider">
-              <Slider
-                showValues={false}
-                isRanged={false}
-                minValue={domain ? domain[0] : 0}
-                maxValue={domain ? domain[1] : 1}
-                value1={currentTime}
-                onSlider1Change={this.onSlider1Change}
-                enableBarDrag={true}
-              />
-            </SliderWrapper>
-            <StyledDomain className="animation-control__time-domain">
-              <span>{moment.utc(domain[1]).format(defaultTimeFormat)}</span>
-            </StyledDomain>
-            <div className="animation-control__speed-control">
-              <SpeedControl
-                onClick={this.toggleSpeedControl}
-                showSpeedControl={showSpeedControl}
-                updateAnimationSpeed={this.props.updateAnimationSpeed}
-                speed={speed}
-                buttonHeight={BUTTON_HEIGHT}
-              />
-            </div>
-          </AnimationWidgetInner>
-          <FloatingTimeDisplay currentTime={currentTime} />
-        </BottomWidgetInner>
-      );
-    }
-  }
+    return (
+      <BottomWidgetInner className="bottom-widget--inner">
+        <AnimationWidgetInner className="animation-widget--inner">
+          <PlaybackControls
+            className="animation-control-playpause"
+            startAnimation={toggleAnimation}
+            isAnimating={isAnimating}
+            pauseAnimation={toggleAnimation}
+            resetAnimation={resetAnimation}
+            speed={speed}
+            isAnimatable={isAnimatable}
+            updateAnimationSpeed={updateAnimationSpeed}
+          />
+          <StyledDomain className="domain-start">
+            <span>{timeStart}</span>
+          </StyledDomain>
+          <SliderWrapper className="animation-control__slider">
+            <Slider
+              showValues={false}
+              isRanged={false}
+              step={step}
+              minValue={domain ? domain[0] : 0}
+              maxValue={domain ? domain[1] : 1}
+              value1={currentTime}
+              onSlider1Change={onSlider1Change}
+              enableBarDrag={true}
+            />
+          </SliderWrapper>
+          <StyledDomain className="domain-end">
+            <span>{timeEnd}</span>
+          </StyledDomain>
+        </AnimationWidgetInner>
+        <FloatingTimeDisplay
+          currentTime={currentTime}
+          defaultTimeFormat={defaultTimeFormat}
+          timeFormat={timeFormat}
+          timezone={timezone}
+        />
+      </BottomWidgetInner>
+    );
+  };
 
   AnimationControl.defaultProps = {
-    sliderHandleWidth: 12,
-    onChange: () => {}
+    toggleAnimation: () => {},
+    updateAnimationSpeed: () => {},
+    animationControlProps: {},
+    animationConfig: {}
   };
 
   return AnimationControl;

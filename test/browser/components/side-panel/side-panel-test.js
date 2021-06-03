@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ const SaveExportDropdown = appInjector.get(SaveExportDropdownFactory);
 import {InitialState} from 'test/helpers/mock-state';
 
 // Constants
-import {EXPORT_IMAGE_ID, EXPORT_DATA_ID, EXPORT_MAP_ID} from 'constants/default-settings';
+import {EXPORT_DATA_ID, EXPORT_MAP_ID, EXPORT_IMAGE_ID} from 'constants/default-settings';
 
 // default props from initial state
 const defaultProps = {
@@ -198,18 +198,6 @@ test('Components -> SidePanel -> render custom panel', t => {
   };
 
   MyPanels.defaultProps = {
-    panels: [
-      {
-        id: 'rocket',
-        label: 'Rocket',
-        iconComponent: RocketIcon
-      },
-      {
-        id: 'chart',
-        label: 'Chart',
-        iconComponent: ChartIcon
-      }
-    ],
     getProps: props => ({
       layers: props.layers
     })
@@ -219,9 +207,33 @@ test('Components -> SidePanel -> render custom panel', t => {
     return MyPanels;
   }
 
+  function CustomSidePanelFactory(...deps) {
+    const CustomSidePanel = SidePanelFactory(...deps);
+    CustomSidePanel.defaultProps = {
+      ...CustomSidePanel.defaultProps,
+      panels: [
+        ...CustomSidePanel.defaultProps.panels,
+        {
+          id: 'rocket',
+          label: 'Rocket',
+          iconComponent: RocketIcon
+        },
+        {
+          id: 'chart',
+          label: 'Chart',
+          iconComponent: ChartIcon
+        }
+      ]
+    };
+    return CustomSidePanel;
+  }
+
+  CustomSidePanelFactory.deps = SidePanelFactory.deps;
+
   let wrapper;
 
   const CustomSidePanel = appInjector
+    .provide(SidePanelFactory, CustomSidePanelFactory)
     .provide(CustomPanelsFactory, CustomSidePanelsFactory)
     .get(SidePanelFactory);
 
@@ -239,7 +251,7 @@ test('Components -> SidePanel -> render custom panel', t => {
   t.equal(wrapper.find(RocketIcon).length, 1, 'should render RocketIcon');
   t.equal(wrapper.find(ChartIcon).length, 1, 'should render RocketIcon');
 
-  // mount CustomSidePanel with 1 of the custom panel
+  // // mount CustomSidePanel with 1 of the custom panel
   const uiState = {...defaultProps.uiState, activeSidePanel: 'rocket'};
   t.doesNotThrow(() => {
     wrapper = mountWithTheme(
@@ -316,9 +328,11 @@ test('Components -> SidePanel -> PanelHeader', t => {
 
 test('Components -> SidePanel -> PanelHeader -> ExportDropDown', t => {
   const toggleModal = sinon.spy();
+  const startExportingImage = sinon.spy();
   const uiStateActions = {
     ...UIStateActions,
-    toggleModal
+    toggleModal,
+    startExportingImage
   };
 
   // mound with exportDropdown
@@ -350,6 +364,7 @@ test('Components -> SidePanel -> PanelHeader -> ExportDropDown', t => {
     'Export Image',
     'Should render Export Image'
   );
+
   wrapper
     .find(ToolbarItem)
     .at(0)

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -149,6 +149,7 @@ class Portaled extends Component {
 
   componentWillUnmount() {
     this._unmounted = true;
+    // @ts-ignore
     this.unsubscribe();
   }
 
@@ -185,17 +186,22 @@ class Portaled extends Component {
       isOpened,
       onClose,
 
-      // Mordal
+      // Modal
       children,
-      modalProps
+      modalProps,
+      modalStyle = {}
     } = this.props;
 
     const {isVisible, pos} = this.state;
 
-    const modalStyle = {
+    const newModalStyle = {
       ...defaultModalStyle,
+      content: {
+        ...(modalStyle.content || {})
+      },
       overlay: {
         ...defaultModalStyle.overlay,
+        ...(modalStyle.overlay || {}),
         // needs to be on top of existing modal
         zIndex: overlayZIndex || 9999
       }
@@ -211,11 +217,12 @@ class Portaled extends Component {
                 {...modalProps}
                 ariaHideApp={false}
                 isOpen
-                style={modalStyle}
+                style={newModalStyle}
                 parentSelector={() => {
                   // React modal issue: https://github.com/reactjs/react-modal/issues/769
                   // failed to execute removeChild on parent node when it is already unmounted
                   return (
+                    // @ts-ignore
                     (context && context.current) || {
                       removeChild: () => {},
                       appendChild: () => {}
@@ -233,6 +240,7 @@ class Portaled extends Component {
                     top: this.state.top,
                     transition: this.props.theme.transition,
                     marginTop: isVisible ? '0px' : '14px',
+                    // @ts-ignore
                     ...pos
                   }}
                 >

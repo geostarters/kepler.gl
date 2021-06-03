@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -17,6 +17,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
+import {LOCALES} from './locales';
 
 export default {
   property: {
@@ -110,8 +112,9 @@ export default {
       geojson: 'geojson',
       cluster: 'klusteri',
       icon: 'kuva',
-      heatmap: ' lämpökartta',
-      h3: 'H3',
+      heatmap: 'lämpökartta',
+      hexagon: 'kuusikulmio',
+      hexagonid: 'H3',
       trip: 'matka',
       s2: 'S2',
       '3d': '3D'
@@ -140,6 +143,8 @@ export default {
     sizeScale: 'Koon skaala',
     worldUnitSize: 'Yksikkö',
     elevationScale: 'Korottamisen skaala',
+    enableElevationZoomFactor: 'Käytä korkeuden zoomauskerrointa',
+    enableElevationZoomFactorDescription: 'Säädä korkeus nykyisen zoomauskertoimen perusteella',
     heightScale: 'Korkeuden skaala',
     coverageRange: 'Peittävyyden rajat',
     highPrecisionRendering: 'Tarkka renderöinti',
@@ -212,8 +217,7 @@ export default {
     rectangle: 'nelikulmio',
     hide: 'piilota',
     show: 'näytä',
-    en: 'English',
-    fi: 'Suomi'
+    ...LOCALES
   },
   modal: {
     title: {
@@ -396,6 +400,10 @@ export default {
       lat1: 'kohteen lat',
       lng1: 'kohteen lng'
     },
+    line: {
+      alt0: 'lähteen korkeus',
+      alt1: 'kohde korkeus'
+    },
     grid: {
       worldUnitSize: 'Ruutujen koko (km)'
     },
@@ -423,7 +431,7 @@ export default {
       '*kepler.gl on client-side sovellus, data pysyy vain selaimessasi...' +
       'Tietoja ei lähetetä palvelimelle.',
     configUploadMessage:
-      'Lisää **CSV**, **GeoJson** tai tallennettu kartta **Json**. Lue lisää [**tuetuista formaateista**]',
+      'Lisää {fileFormatNames} tai tallennettu kartta **Json**. Lue lisää [**tuetuista formaateista**]',
     browseFiles: 'selaa tiedostojasi',
     uploading: 'ladataan',
     fileNotSupported: 'Tiedosto {errorFiles} ei ole tuettu.',

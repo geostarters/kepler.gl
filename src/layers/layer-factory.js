@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,21 +21,23 @@
 import keyMirror from 'keymirror';
 
 import {AGGREGATION_TYPES} from 'constants/default-settings';
-import {DefaultColorRange} from 'constants/color-ranges';
+import {DEFAULT_COLOR_RANGE} from 'constants/color-ranges';
 
 export const PROPERTY_GROUPS = keyMirror({
   color: null,
   stroke: null,
   radius: null,
   height: null,
-
+  angle: null,
   // for heatmap aggregation
   cell: null,
   precision: null
 });
 
 export const DEFAULT_LAYER_OPACITY = 0.8;
+export {DEFAULT_COLOR_RANGE};
 
+/** @type {import('./layer-factory').LayerTextLabel} */
 export const DEFAULT_TEXT_LABEL = {
   field: null,
   color: [255, 255, 255],
@@ -45,8 +47,7 @@ export const DEFAULT_TEXT_LABEL = {
   alignment: 'center'
 };
 
-export const DEFAULT_COLOR_RANGE = DefaultColorRange;
-
+/** @type {import('./layer-factory').ColorRange} */
 export const DEFAULT_CUSTOM_PALETTE = {
   name: 'color.customPalette',
   type: 'custom',
@@ -54,6 +55,9 @@ export const DEFAULT_CUSTOM_PALETTE = {
   colors: []
 };
 
+export const UNKNOWN_COLOR_KEY = '__unknownColor__';
+
+/** @type {import('./layer-factory').ColorUI} */
 export const DEFAULT_COLOR_UI = {
   // customPalette in edit
   customPalette: DEFAULT_CUSTOM_PALETTE,
@@ -70,6 +74,7 @@ export const DEFAULT_COLOR_UI = {
   }
 };
 
+/** @type {import('./layer-factory').LayerVisConfig} */
 export const LAYER_VIS_CONFIGS = {
   thickness: {
     type: 'number',
@@ -180,14 +185,14 @@ export const LAYER_VIS_CONFIGS = {
   },
   colorRange: {
     type: 'color-range-select',
-    defaultValue: DefaultColorRange,
+    defaultValue: DEFAULT_COLOR_RANGE,
     label: 'layerVisConfigs.colorRange',
     group: PROPERTY_GROUPS.color,
     property: 'colorRange'
   },
   strokeColorRange: {
     type: 'color-range-select',
-    defaultValue: DefaultColorRange,
+    defaultValue: DEFAULT_COLOR_RANGE,
     label: 'layerVisConfigs.strokeColorRange',
     group: PROPERTY_GROUPS.color,
     property: 'strokeColorRange'
@@ -276,14 +281,18 @@ export const LAYER_VIS_CONFIGS = {
     isRanged: false,
     range: [1, 1000],
     step: 1,
+    group: PROPERTY_GROUPS.stroke,
     property: 'sizeScale'
   },
   angle: {
     type: 'number',
+    label: 'layerVisConfigs.angle',
     defaultValue: 0,
     isRanged: false,
     range: [0, 360],
-    step: 1
+    group: PROPERTY_GROUPS.angle,
+    step: 1,
+    property: 'angle'
   },
   worldUnitSize: {
     type: 'number',
@@ -304,6 +313,14 @@ export const LAYER_VIS_CONFIGS = {
     step: 0.1,
     group: PROPERTY_GROUPS.height,
     property: 'elevationScale'
+  },
+  enableElevationZoomFactor: {
+    type: 'boolean',
+    defaultValue: true,
+    label: 'layerVisConfigs.enableElevationZoomFactor',
+    group: PROPERTY_GROUPS.height,
+    property: 'enableElevationZoomFactor',
+    description: 'layerVisConfigs.enableElevationZoomFactorDescription'
   },
   elevationRange: {
     type: 'number',
@@ -404,6 +421,7 @@ export const LAYER_VIS_CONFIGS = {
   }
 };
 
+/** @type {import('./layer-factory').LayerTextConfig} */
 export const LAYER_TEXT_CONFIGS = {
   fontSize: {
     type: 'number',

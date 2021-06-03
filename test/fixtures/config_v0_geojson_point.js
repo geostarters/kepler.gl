@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -163,7 +163,24 @@ export const parsedConfigV0 = {
       tooltip: {
         enabled: true,
         fieldsToShow: {
-          '9sayb4m9r': ['fillColor', 'hi-precision', 'addresses', 'id']
+          '9sayb4m9r': [
+            {
+              name: 'fillColor',
+              format: null
+            },
+            {
+              name: 'hi-precision',
+              format: null
+            },
+            {
+              name: 'addresses',
+              format: null
+            },
+            {
+              name: 'id',
+              format: null
+            }
+          ]
         }
       },
       brush: {

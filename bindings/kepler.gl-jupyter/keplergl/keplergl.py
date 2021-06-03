@@ -5,8 +5,9 @@ import pandas as pd
 import geopandas
 import shapely.wkt
 import json
+from ._version import EXTENSION_SPEC_VERSION
 
-documentation = 'https://github.com/keplergl/kepler.gl/blob/master/docs/keplergl-jupyter/user-guide.md'
+documentation = 'https://docs.kepler.gl/docs/keplergl-jupyter'
 def _df_to_dict(df):
     ''' Create an input dict for Kepler.gl using a DataFrame object
 
@@ -28,16 +29,20 @@ def _gdf_to_dict(gdf):
     Returns:
     - dictionary: a dictionary variable that can be used in Kepler.gl
     '''
+    # reproject to 4326 if needed
+    if gdf.crs and not gdf.crs == 4326:
+        gdf = gdf.to_crs(4326)
 
     # get name of the geometry column
     # will cause error if data frame has no geometry column
     name = gdf.geometry.name
 
-    copy = gdf.copy()
-    # convert it to wkt
-    copy[name] = copy.geometry.apply(lambda x: shapely.wkt.dumps(x))
+    # convert geodataframe to dataframe
+    df = pd.DataFrame(gdf)
+    # convert geometry to wkt
+    df[name] = df.geometry.apply(lambda x: shapely.wkt.dumps(x))
 
-    return _df_to_dict(copy)
+    return _df_to_dict(df)
 
 def _normalize_data(data):
     if isinstance(data, pd.DataFrame):
@@ -86,8 +91,8 @@ class KeplerGl(widgets.DOMWidget):
     _model_name = Unicode('KeplerGlModal').tag(sync=True)
     _view_module = Unicode('keplergl-jupyter').tag(sync=True)
     _model_module = Unicode('keplergl-jupyter').tag(sync=True)
-    _view_module_version = Unicode('^0.1.0').tag(sync=True)
-    _model_module_version = Unicode('^0.1.0').tag(sync=True)
+    _view_module_version = Unicode(EXTENSION_SPEC_VERSION).tag(sync=True)
+    _model_module_version = Unicode(EXTENSION_SPEC_VERSION).tag(sync=True)
     value = Unicode('Hello World!').tag(sync=True)
 
     data = Dict({}).tag(sync=True, **data_serialization)
@@ -133,7 +138,43 @@ class KeplerGl(widgets.DOMWidget):
 
         self.data = copy
 
-    def save_to_html(self, data=None, config=None, file_name='keplergl_map.html', read_only=False):
+    def _repr_html_(self, data=None, config=None, read_only=False, center_map=False):
+        ''' Return current map in an html encoded string
+
+        Inputs:
+        - data: a data dictionary {"name": data}, if not provided, will use current map data
+        - config: map config dictionary, if not provided, will use current map config
+        - read_only: if read_only is True, hide side panel to disable map customization
+
+        Returns:
+        - a html encoded string
+
+        Example of use:
+            # this will save map with provided data and config
+            keplergl._repr_html_(data={"data_1": df}, config=config)
+
+            # this will save current map
+            keplergl._repr_html_()
+
+        '''
+        keplergl_html = resource_string(__name__, 'static/keplergl.html').decode('utf-8')
+        # find open of body
+        k = keplergl_html.find("<body>")
+
+        data_to_add = data_to_json(self.data, None) if data == None else data_to_json(data, None)
+        config_to_add = self.config if config == None else config
+
+        # for key in data_to_add:
+        #     print(type(data_to_add[key]))
+
+        keplergl_data = json.dumps({"config": config_to_add, "data": data_to_add, "options": {"readOnly": read_only, "centerMap": center_map}})
+
+        cmd = """window.__keplerglDataConfig = {};""".format(keplergl_data)
+        frame_txt = keplergl_html[:k] + "<body><script>" + cmd + "</script>" + keplergl_html[k+6:]
+
+        return frame_txt.encode('utf-8')
+
+    def save_to_html(self, data=None, config=None, file_name='keplergl_map.html', read_only=False, center_map=False):
         ''' Save current map to an interactive html
 
         Inputs:
@@ -153,22 +194,9 @@ class KeplerGl(widgets.DOMWidget):
             keplergl.save_to_html(file_name='first_map.html')
 
         '''
-        keplergl_html = resource_string(__name__, 'static/keplergl.html').decode('utf-8')
-        # find open of body
-        k = keplergl_html.find("<body>")
+        frame_txt = self._repr_html_(data=data, config=config, read_only=read_only, center_map=center_map)
 
-        data_to_add = data_to_json(self.data, None) if data == None else data_to_json(data, None)
-        config_to_add = self.config if config == None else config
-
-        # for key in data_to_add:
-        #     print(type(data_to_add[key]))
-
-        keplergl_data = json.dumps({"config": config_to_add, "data": data_to_add, "options": {"readOnly": read_only}})
-
-        cmd = """window.__keplerglDataConfig = {};""".format(keplergl_data)
-        frame_txt = keplergl_html[:k] + "<body><script>" + cmd + "</script>" + keplergl_html[k+6:]
-
-        with open(file_name,'wb') as f:
-            f.write(frame_txt.encode('utf-8'))
+        with open(file_name, 'wb') as f:
+            f.write(frame_txt)
 
         print("Map saved to {}!".format(file_name))

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import PanelHeaderAction from 'components/side-panel/panel-header-action';
+import PanelHeaderActionFactory from 'components/side-panel/panel-header-action';
 import {EyeSeen, EyeUnseen, Upload} from 'components/common/icons';
 
 import {
@@ -30,7 +30,7 @@ import {
   PanelLabelWrapper,
   CenterFlexbox
 } from 'components/common/styled-components';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 import {camelize} from 'utils/utils';
 
 const StyledInteractionPanel = styled.div`
@@ -55,8 +55,20 @@ const LayerLabel = styled(PanelLabelBold)`
   color: ${props => (props.active ? props.theme.textColor : props.theme.labelColor)};
 `;
 
-function LayerGroupSelectorFactory() {
-  const LayerGroupSelector = ({layers, editableLayers, onChange, topLayers}) => (
+LayerGroupSelectorFactory.deps = [PanelHeaderActionFactory];
+
+function LayerGroupSelectorFactory(PanelHeaderAction) {
+  const defaultActionIcons = {
+    visible: EyeSeen,
+    hidden: EyeUnseen
+  };
+  const LayerGroupSelector = ({
+    layers,
+    editableLayers,
+    onChange,
+    topLayers,
+    actionIcons = defaultActionIcons
+  }) => (
     <StyledInteractionPanel className="map-style__layer-group__selector">
       <div className="layer-group__header">
         <PanelLabel>
@@ -79,7 +91,7 @@ function LayerGroupSelectorFactory() {
                     }
                   })
                 }
-                IconComponent={layers[slug] ? EyeSeen : EyeUnseen}
+                IconComponent={layers[slug] ? actionIcons.visible : actionIcons.hidden}
                 active={layers[slug]}
                 flush
               />

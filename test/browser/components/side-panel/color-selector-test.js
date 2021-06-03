@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -186,7 +186,6 @@ test('Components -> ArcLayerColorSelector.render -> render single color', t => {
   const initialState = StateWTrips.visState;
   const {layers} = initialState;
   const arcLayer = layers.find(l => l.type === 'arc');
-
   const updateLayerConfig = sinon.spy();
   const updateLayerVisConfig = sinon.spy();
   const updateLayerColorUI = sinon.spy();

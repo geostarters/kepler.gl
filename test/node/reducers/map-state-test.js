@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -107,6 +107,24 @@ test('#mapStateReducer -> FIT_BOUNDS', t => {
   t.equal(updatedState.latitude, expected.center[1], 'should fit latitude');
   t.equal(updatedState.longitude, expected.center[0], 'should fit longitude');
   t.equal(updatedState.zoom, expected.zoom, 'should fit zoom');
+
+  t.end();
+});
+
+test('#mapStateReducer -> FIT_BOUNDS.invalid', t => {
+  // default input and output in @mapbox/geo-viewport
+  // https://github.com/mapbox/geo-viewport
+
+  const mapUpdate = {
+    width: 640,
+    height: 480
+  };
+
+  const stateWidthMapDimension = reducer(undefined, updateMap(mapUpdate));
+  const updatedState = reducer(stateWidthMapDimension, fitBounds(null));
+  t.equal(updatedState, stateWidthMapDimension, 'should not update state when bounds is invalid');
+  const updatedState2 = reducer(stateWidthMapDimension, fitBounds([500, -100, 322, 9]));
+  t.equal(updatedState2, stateWidthMapDimension, 'should not update state when bounds is invalid');
 
   t.end();
 });

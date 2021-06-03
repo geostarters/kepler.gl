@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,12 +19,19 @@
 // THE SOFTWARE.
 
 import en from './en';
-import fi from './fi';
 import {flattenMessages} from 'utils/locale-utils';
+import {LOCALE_CODES} from './locales';
 
-const en_flat = flattenMessages(en);
+const enFlat = flattenMessages(en);
 
-export const messages = {
-  en: en_flat,
-  fi: {...en_flat, ...flattenMessages(fi)}
-};
+export const messages = Object.keys(LOCALE_CODES).reduce(
+  (acc, key) => ({
+    ...acc,
+    [key]: key === 'en' ? enFlat : {...enFlat, ...flattenMessages(require(`./${key}`).default)}
+  }),
+  {}
+);
+
+export {LOCALE_CODES, LOCALES} from './locales';
+
+export {default as FormattedMessage} from './formatted-message';

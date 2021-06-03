@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,11 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// required by enzymev3
-const configure = require('enzyme').configure;
-const Adapter = require('enzyme-adapter-react-16');
-configure({adapter: new Adapter()});
-
 import './injector-test';
 import './container-test';
 import './kepler-gl-test';
@@ -34,4 +29,9 @@ import './side-panel';
 
 import './common';
 import './editor';
+import './filters';
 import './map-container-test';
+import './geocoder-panel-test';
+import './tooltip-config-test';
+import './bottom-widget-test';
+import './plot-container-test';

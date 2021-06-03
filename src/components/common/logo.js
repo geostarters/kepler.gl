@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -79,7 +79,7 @@ const KeplerGlLogo = ({appName, appWebsite = KEPLER_GL_WEBSITE, version}) => (
 
 KeplerGlLogo.propTypes = {
   appName: PropTypes.string,
-  version: PropTypes.string,
+  version: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
   appWebsite: PropTypes.string
 };
 

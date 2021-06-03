@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ import Announcement from '../../../examples/demo-app/src/components/announcement
 
 const BannerKey = 'kgHideBanner-iiba';
 const BannerHeight = 30;
-const BACKGROUND_COLOR = '#82368c';
+const BACKGROUND_COLOR = '#2E7CF6';
 
 const SECTION_CONTENT = {
   showcase: Showcase,
@@ -56,7 +56,7 @@ export default class Home extends PureComponent {
   componentDidMount() {
     // delay 2s to show the banner
     // if (!window.localStorage.getItem(BannerKey)) {
-    //  window.setTimeout(this._showBanner, 3000);
+    //   window.setTimeout(this._showBanner, 3000);
     // }
   }
 

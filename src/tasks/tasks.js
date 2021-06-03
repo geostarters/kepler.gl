@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,18 @@
 
 import Task, {taskCreator} from 'react-palm/tasks';
 import {json as requestJson} from 'd3-request';
-import {readFile} from '../processors/file-handler';
+import {readFileInBatches, processFileData} from '../processors/file-handler';
 
 export const LOAD_FILE_TASK = Task.fromPromise(
-  ({file, fileCache}) => readFile({file, fileCache}),
+  ({file, fileCache, loaders, loadOptions}) =>
+    readFileInBatches({file, fileCache, loaders, loadOptions}),
   'LOAD_FILE_TASK'
+);
+
+export const PROCESS_FILE_DATA = Task.fromPromise(
+  processFileData,
+
+  'PROCESS_FILE_CONTENT'
 );
 
 export const LOAD_MAP_STYLE_TASK = taskCreator(
@@ -76,4 +83,10 @@ export const DELAY_TASK = Task.fromCallback(
   (delay, cb) => window.setTimeout(() => cb(), delay),
 
   'DELAY_TASK'
+);
+
+export const UNWRAP_TASK = Task.fromPromise(
+  promise => promise,
+
+  'UNWRAP'
 );

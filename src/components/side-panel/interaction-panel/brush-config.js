@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,13 +19,15 @@
 // THE SOFTWARE.
 
 import React from 'react';
-import RangeSlider from 'components/common/range-slider';
+import RangeSliderFactory from 'components/common/range-slider';
 
 import {PanelLabel, SidePanelSection} from 'components/common/styled-components';
 import {BRUSH_CONFIG} from 'utils/interaction-utils';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
-function BrushConfigFactory() {
+BrushConfigFactory.deps = [RangeSliderFactory];
+
+function BrushConfigFactory(RangeSlider) {
   const BrushConfig = ({config, onChange}) => (
     <SidePanelSection>
       <PanelLabel>

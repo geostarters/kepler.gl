@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,8 @@ const StyledBanner = styled.div`
   svg:hover {
     cursor: pointer;
   }
+
+  top: ${props => (props.visible ? 0 : -100)}px;
 `;
 
 const Banner = ({
@@ -53,7 +55,7 @@ const Banner = ({
     bgColor={bgColor}
     fontColor={fontColor}
     height={height}
-    style={{top: show ? 0 : `-100px`}}
+    visible={show}
   >
     <div>{children}</div>
     <Icons.Delete height="14px" onClick={onClose} />

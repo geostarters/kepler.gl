@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -4002,7 +4002,25 @@ export const sampleTripDataConfig = {
             },
             color: [255, 0, 0],
             label: 'pickup',
-            isVisible: true
+            isVisible: true,
+            visConfig: {
+              colorRange: {
+                colorMap: [
+                  ['apple tree', '#FF000'],
+                  ['banana peel', '#00FF00'],
+                  ['banana peel 2', '#0000FF'],
+                  ['mango mint pineapple juice', '#555555'],
+                  ['orange peel', '#111111'],
+                  ['orange peel 0', '#222222']
+                ]
+              }
+            }
+          },
+          visualChannels: {
+            colorField: {
+              name: 'fare_type',
+              type: 'string'
+            }
           }
         },
         {

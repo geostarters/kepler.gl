@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ import Header from './header';
 const GITHUB_PROJECT = 'https://github.com/keplergl/kepler.gl';
 const GITHUB_PROJECT_ISSUES = `${GITHUB_PROJECT}/issues`;
 const MAILING_LIST_URL = 'https://groups.google.com/d/forum/kepler-gl';
-const CONTRIBUTING_URL = 'https://github.com/keplergl/kepler.gl/blob/master/contributing/CONTRIBUTING.md';
+const CONTRIBUTING_URL = 'https://docs.kepler.gl/contributing';
 
 const StyledContainer = styled(Container)`
   background-color: black;

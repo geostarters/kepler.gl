@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,33 +26,7 @@ module.exports = function babel(api) {
   const presets = ['@babel/preset-env', '@babel/preset-react'];
   const plugins = [
     '@babel/plugin-proposal-class-properties',
-    [
-      '@babel/transform-runtime',
-      {
-        regenerator: true
-      }
-    ],
-    '@babel/plugin-syntax-dynamic-import',
-    '@babel/plugin-syntax-import-meta',
-    '@babel/plugin-proposal-json-strings',
-    '@babel/plugin-proposal-function-sent',
-    '@babel/plugin-proposal-export-namespace-from',
-    '@babel/plugin-proposal-numeric-separator',
-    '@babel/plugin-proposal-throw-expressions',
-    '@babel/plugin-proposal-export-default-from',
-    '@babel/plugin-proposal-logical-assignment-operators',
-    '@babel/plugin-proposal-optional-chaining',
-    [
-      '@babel/plugin-proposal-pipeline-operator',
-      {
-        proposal: 'minimal'
-      }
-    ],
-    '@babel/plugin-transform-react-jsx',
     'transform-inline-environment-variables',
-    '@babel/plugin-proposal-nullish-coalescing-operator',
-    '@babel/plugin-proposal-do-expressions',
-    '@babel/plugin-proposal-function-bind',
     [
       'search-and-replace',
       {

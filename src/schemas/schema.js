@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,9 @@ import {console as Console} from 'global/window';
 
 import {CURRENT_VERSION} from './versions';
 
+/** @type {typeof import('./schema').Schema} */
 export default class Schema {
-  constructor({version, key, properties} = {}) {
+  constructor({version = CURRENT_VERSION, key = '', properties = null} = {}) {
     this.version = version;
     this.properties = properties;
     this.key = key;

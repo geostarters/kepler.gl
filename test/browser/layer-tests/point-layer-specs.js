@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@ import {
   testCreateCases,
   testFormatLayerDataCases,
   testRenderLayerCases,
+  testUpdateLayer,
   preparedDataset,
   dataId,
   testRows,
@@ -35,6 +36,7 @@ import {
 import {KeplerGlLayers} from 'layers';
 import {INITIAL_MAP_STATE} from 'reducers/map-state-updaters';
 import {DEFAULT_TEXT_LABEL} from 'layers/layer-factory';
+import {copyTableAndUpdate} from 'utils/table-utils/kepler-table';
 
 const {PointLayer} = KeplerGlLayers;
 
@@ -107,10 +109,7 @@ test('#PointLayer -> formatLayerData', t => {
         id: 'test_layer_1'
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -233,10 +232,7 @@ test('#PointLayer -> formatLayerData', t => {
         }
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -329,10 +325,7 @@ test('#PointLayer -> formatLayerData', t => {
         }
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -394,6 +387,69 @@ test('#PointLayer -> formatLayerData', t => {
           'getRadius should return corrent radius'
         );
       }
+    },
+    {
+      name: 'Test gps point.2 Data with fixed radius and null SizeField',
+      layer: {
+        type: 'point',
+        id: 'test_layer_2',
+        config: {
+          dataId,
+          label: 'some point file',
+          columns: {
+            lat: 'lat',
+            lng: 'lng'
+          },
+          color: [10, 10, 10],
+          visConfig: {
+            outline: true,
+            fixedRadius: true
+          },
+          // size by id(integer)
+          sizeField: null
+        }
+      },
+      datasets: {
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
+      },
+      assert: result => {
+        const {layerData, layer} = result;
+
+        const expectedLayerData = {
+          data: [
+            {
+              data: testRows[0],
+              index: 0,
+              position: [testRows[0][2], testRows[0][1], 0]
+            },
+            {
+              data: testRows[4],
+              index: 4,
+              position: [testRows[4][2], testRows[4][1], 0]
+            }
+          ],
+          getFilterValue: () => {},
+          getLineColor: () => {},
+          getFillColor: () => {},
+          getRadius: () => {},
+          getPosition: () => {},
+          textLabels: []
+        };
+
+        t.deepEqual(
+          Object.keys(layerData).sort(),
+          Object.keys(expectedLayerData).sort(),
+          'layerData should have 6 keys'
+        );
+        t.deepEqual(
+          layerData.data,
+          expectedLayerData.data,
+          'should format correct point layerData data'
+        );
+        t.deepEqual(layer.config.sizeDomain, [0, 1], 'should update layer sizeDomain');
+        // getRadius should be a constant because sizeField is null
+        t.equal(layerData.getRadius, 1, 'getRadius should return current radius');
+      }
     }
   ];
 
@@ -431,10 +487,7 @@ test('#PointLayer -> renderLayer', t => {
         }
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: (deckLayers, layer) => {
         t.equal(deckLayers.length, 1, 'Should create 1 deck.gl layer');
@@ -488,10 +541,7 @@ test('#PointLayer -> renderLayer', t => {
         id: 'test_layer_1'
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: (deckLayers, layer, layerData) => {
         t.equal(deckLayers.length, 5, 'Should create 5 deck.gl layer');
@@ -591,10 +641,7 @@ test('#PointLayer -> renderLayer', t => {
         id: 'test_layer_1'
       },
       datasets: {
-        [dataId]: {
-          ...preparedDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(preparedDataset, {filteredIndex})
       },
       assert: (deckLayers, layer, layerData) => {
         t.deepEqual(
@@ -615,8 +662,8 @@ test('#PointLayer -> renderLayer', t => {
         const getRadius = layerData.getRadius(layerData.data[1]);
 
         const expectedPixelOffset1 = [
-          1 * (getRadius * pixelRadius + padding),
-          1 * (getRadius * pixelRadius + padding + 10)
+          getRadius * pixelRadius + padding,
+          getRadius * pixelRadius + padding + 10
         ];
         t.deepEqual(getColor, [2, 2, 2], 'Should calculate correct getColor');
         t.deepEqual(getSize, 1, 'Should calculate correct getSize');
@@ -630,5 +677,48 @@ test('#PointLayer -> renderLayer', t => {
   ];
 
   testRenderLayerCases(t, PointLayer, TEST_CASES);
+  t.end();
+});
+
+test('#PointLayer -> updateLayer', t => {
+  const layerConfig = {
+    id: 'test1',
+    type: 'point',
+    config: {
+      dataId,
+      label: 'some point file',
+      columns: {
+        lat: 'lat',
+        lng: 'lng'
+      },
+      visConfig: {
+        outline: true,
+        filled: true,
+        colorRange: {
+          colors: ['#010101', '#020202', '#030303']
+        },
+        strokeColor: [4, 5, 6]
+      }
+    },
+    visualChannels: {
+      // color by id(integer)
+      colorField: {
+        type: 'string',
+        name: 'types'
+      },
+      // size by id(integer)
+      sizeField: {
+        type: 'integer',
+        name: 'id'
+      }
+    }
+  };
+
+  const shouldUpdate = {
+    gpuFilter: {},
+    dynamicGpuFilter: {instanceRadius: true}
+  };
+
+  testUpdateLayer(t, {layerConfig, shouldUpdate});
   t.end();
 });

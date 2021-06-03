@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,9 @@
 
 import React, {Component} from 'react';
 import styled from 'styled-components';
-import RangeSlider from 'components/common/range-slider';
+import RangeSliderFactory from 'components/common/range-slider';
 import onClickOutside from 'react-onclickoutside';
-import {SPEED_CONTROL_RANGE} from 'constants/default-settings';
+import {SPEED_CONTROL_RANGE, SPEED_CONTROL_STEP} from 'constants/default-settings';
 
 const SliderWrapper = styled.div`
   position: relative;
@@ -34,40 +34,46 @@ const SpeedSliderContainer = styled.div`
   right: calc(0% - 32px);
   width: 180px;
   padding: 2px 8px 2px 12px;
-  background-color: ${props => props.theme.panelBackground};
+  background-color: ${props => props.theme.bottomWidgetBgd};
   box-shadow: -2px -2px 0 0 rgba(0, 0, 0, 0.1);
+
   .kg-range-slider__input {
-    width: 36px;
+    width: 48px;
+    padding: 6px;
   }
 `;
 
-class AnimationSpeedSlider extends Component {
-  handleClickOutside = e => {
-    this.props.onHide();
-  };
+AnimationSpeedSliderFactory.deps = [RangeSliderFactory];
 
-  _onChange = v => this.props.updateAnimationSpeed(v[1]);
+export default function AnimationSpeedSliderFactory(RangeSlider) {
+  class AnimationSpeedSlider extends Component {
+    handleClickOutside = e => {
+      this.props.onHide();
+    };
 
-  render() {
-    return (
-      <SpeedSliderContainer className="animation-control__speed-slider">
-        <SliderWrapper>
-          <RangeSlider
-            range={SPEED_CONTROL_RANGE}
-            step={0.01}
-            value0={0}
-            value1={this.props.speed}
-            onChange={this._onChange}
-            isRanged={false}
-            showTooltip
-            showInput
-            inputTheme="secondary"
-            inputSize="tiny"
-          />
-        </SliderWrapper>
-      </SpeedSliderContainer>
-    );
+    _onChange = v => this.props.updateAnimationSpeed(v[1]);
+
+    render() {
+      return (
+        <SpeedSliderContainer className="animation-control__speed-slider">
+          <SliderWrapper>
+            <RangeSlider
+              range={SPEED_CONTROL_RANGE}
+              step={SPEED_CONTROL_STEP}
+              value0={0}
+              value1={this.props.speed}
+              onChange={this._onChange}
+              isRanged={false}
+              showTooltip
+              showInput
+              inputTheme="secondary"
+              inputSize="tiny"
+            />
+          </SliderWrapper>
+        </SpeedSliderContainer>
+      );
+    }
   }
-}
 
-export default onClickOutside(AnimationSpeedSlider);
+  return onClickOutside(AnimationSpeedSlider);
+}

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,9 @@ export default function DatasetTagFactory() {
   const DatasetTag = ({onClick, dataset}) => (
     <DatasetTagWrapper className="source-data-tag" onClick={onClick}>
       <DatasetSquare className="dataset-color" color={dataset.color} />
-      <div className="dataset-name">{dataset.label}</div>
+      <div className="dataset-name" title={dataset.label}>
+        {dataset.label}
+      </div>
     </DatasetTagWrapper>
   );
 

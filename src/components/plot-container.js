@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,13 +30,24 @@ import MapContainerFactory from './map-container';
 import {convertToPng} from 'utils/export-utils';
 import {scaleMapStyleByResolution} from 'utils/map-style-utils/mapbox-gl-style-editor';
 import {getScaleFromImageSize} from 'utils/export-utils';
+import {findMapBounds} from 'utils/data-utils';
+import {getCenterAndZoomFromBounds} from 'utils/projection-utils';
+import {GEOCODER_LAYER_ID} from 'constants/default-settings';
+
+const CLASS_FILTER = ['mapboxgl-control-container', 'attrition-link', 'attrition-logo'];
+const DOM_FILTER_FUNC = node => !CLASS_FILTER.includes(node.className);
+const OUT_OF_SCREEN_POSITION = -9999;
 
 const propTypes = {
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   exportImageSetting: PropTypes.object.isRequired,
   addNotification: PropTypes.func.isRequired,
-  mapFields: PropTypes.object.isRequired
+  mapFields: PropTypes.object.isRequired,
+  setExportImageSetting: PropTypes.object.isRequired,
+  setExportImageDataUri: PropTypes.func.isRequired,
+  setExportImageError: PropTypes.func.isRequired,
+  splitMaps: PropTypes.arrayOf(PropTypes.object)
 };
 
 PlotContainerFactory.deps = [MapContainerFactory];
@@ -44,11 +55,20 @@ PlotContainerFactory.deps = [MapContainerFactory];
 // Remove mapbox logo in exported map, because it contains non-ascii characters
 const StyledPlotContainer = styled.div`
   .mapboxgl-ctrl-bottom-left,
-  .mapboxgl-ctrl-bottom-right {
+  .mapboxgl-ctrl-bottom-right,
+  .mapbox-attribution-container {
     display: none;
   }
 
   position: absolute;
+  top: ${OUT_OF_SCREEN_POSITION}px;
+  left: ${OUT_OF_SCREEN_POSITION}px;
+`;
+
+const StyledMapContainer = styled.div`
+  width: ${props => props.width}px;
+  height: ${props => props.height}px;
+  display: flex;
 `;
 
 const deckGlProps = {
@@ -63,10 +83,11 @@ export default function PlotContainerFactory(MapContainer) {
     constructor(props) {
       super(props);
       this._onMapRender = debounce(this._onMapRender, 500);
+      this._retrieveNewScreenshot = debounce(this._retrieveNewScreenshot, 500);
     }
 
     componentDidMount() {
-      this.props.startExportingImage();
+      this.props.setExportImageSetting({processing: true});
     }
 
     componentDidUpdate(prevProps) {
@@ -76,6 +97,7 @@ export default function PlotContainerFactory(MapContainer) {
         item => this.props.exportImageSetting[item] !== prevProps.exportImageSetting[item]
       );
       if (shouldRetrieveScreenshot) {
+        this.props.setExportImageSetting({processing: true});
         this._retrieveNewScreenshot();
       }
     }
@@ -118,14 +140,13 @@ export default function PlotContainerFactory(MapContainer) {
 
     _retrieveNewScreenshot = () => {
       if (this.plottingAreaRef.current) {
-        this.props.startExportingImage();
-        const filter = node => node.className !== 'mapboxgl-control-container';
-
-        convertToPng(this.plottingAreaRef.current, {filter})
+        convertToPng(this.plottingAreaRef.current, {filter: DOM_FILTER_FUNC})
           .then(this.props.setExportImageDataUri)
           .catch(err => {
             this.props.setExportImageError(err);
-            this.props.addNotification(exportImageError({err}));
+            if (this.props.enableErrorNotification) {
+              this.props.addNotification(exportImageError({err}));
+            }
           });
       }
     };
@@ -133,24 +154,46 @@ export default function PlotContainerFactory(MapContainer) {
     render() {
       const {exportImageSetting, mapFields, splitMaps} = this.props;
       const {imageSize = {}, legend} = exportImageSetting;
+      const {mapState} = mapFields;
       const isSplit = splitMaps && splitMaps.length > 1;
 
       const size = {
         width: imageSize.imageW || 1,
         height: imageSize.imageH || 1
       };
+      const width = size.width / (isSplit ? 2 : 1);
+      const height = size.height;
       const scale = this.mapScaleSelector(this.props);
+      const newMapState = {
+        ...mapState,
+        width,
+        height,
+        zoom: mapState.zoom + (Math.log2(scale) || 0)
+      };
+
+      // center and all layer bounds
+      if (exportImageSetting.center) {
+        const renderedLayers = mapFields.layers.filter(
+          (layer, idx) =>
+            layer.id !== GEOCODER_LAYER_ID && layer.shouldRenderLayer(mapFields.layerData[idx])
+        );
+        const bounds = findMapBounds(renderedLayers);
+        const centerAndZoom = getCenterAndZoomFromBounds(bounds, {width, height});
+        if (centerAndZoom) {
+          const zoom = Number.isFinite(centerAndZoom.zoom) ? centerAndZoom.zoom : mapState.zoom;
+
+          newMapState.longitude = centerAndZoom.center[0];
+          newMapState.latitude = centerAndZoom.center[1];
+          newMapState.zoom = zoom + Number(Math.log2(scale) || 0);
+        }
+      }
+
       const mapProps = {
         ...mapFields,
         mapStyle: this.scaledMapStyleSelector(this.props),
 
         // override viewport based on export settings
-        mapState: {
-          ...mapFields.mapState,
-          width: size.width / (isSplit ? 2 : 1),
-          height: size.height,
-          zoom: mapFields.mapState.zoom + (Math.log2(scale) || 0)
-        },
+        mapState: newMapState,
         mapControls: {
           // override map legend visibility
           mapLegend: {
@@ -178,20 +221,10 @@ export default function PlotContainerFactory(MapContainer) {
       );
 
       return (
-        <StyledPlotContainer
-          style={{position: 'absolute', top: -9999, left: -9999}}
-          className="export-map-instance"
-        >
-          <div
-            ref={this.plottingAreaRef}
-            style={{
-              width: `${size.width}px`,
-              height: `${size.height}px`,
-              display: 'flex'
-            }}
-          >
+        <StyledPlotContainer className="export-map-instance">
+          <StyledMapContainer ref={this.plottingAreaRef} width={size.width} height={size.height}>
             {mapContainers}
-          </div>
+          </StyledMapContainer>
         </StyledPlotContainer>
       );
     }

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,9 @@ export const ListItem = ({value, displayOption = defaultDisplay}) => (
 const DropdownListWrapper = styled.div`
   background-color: ${props =>
     props.light ? props.theme.dropdownListBgdLT : props.theme.dropdownListBgd};
-  border-top: 1px solid ${props => props.theme.dropdownListBorderTop};
+  border-top: 1px solid
+    ${props =>
+      props.light ? props.theme.dropdownListBorderTopLT : props.theme.dropdownListBorderTop};
   ${props => (props.light ? props.theme.dropdownListLT : props.theme.dropdownList)};
 `;
 

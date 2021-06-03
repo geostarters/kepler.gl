@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,16 +20,23 @@
 
 import {ascending, extent, histogram as d3Histogram, ticks} from 'd3-array';
 import keyMirror from 'keymirror';
+import {console as Console} from 'global/console';
 import get from 'lodash.get';
+import isEqual from 'lodash.isequal';
+
 import booleanWithin from '@turf/boolean-within';
 import {point as turfPoint} from '@turf/helpers';
 import {Decimal} from 'decimal.js';
-import {ALL_FIELD_TYPES, FILTER_TYPES} from 'constants/default-settings';
-import {maybeToDate, notNullorUndefined, unique, timeToUnixMilli} from './data-utils';
+import {ALL_FIELD_TYPES, FILTER_TYPES, ANIMATION_WINDOW} from 'constants/default-settings';
+import {notNullorUndefined, unique, timeToUnixMilli} from './data-utils';
 import * as ScaleUtils from './data-scale-utils';
-import {LAYER_TYPES} from '../constants';
+import {LAYER_TYPES} from 'layers/types';
 import {generateHashId, set, toArray} from './utils';
-import {getGpuFilterProps, getDatasetFieldIndexForFilter} from './gpu-filter-utils';
+import {getCentroid, h3IsValid} from 'layers/h3-hexagon-layer/h3-utils';
+
+// TYPE
+/** @typedef {import('./table-utils/kepler-table').FilterRecord} FilterRecord */
+/** @typedef {import('./filter-utils').FilterResult} FilterResult */
 
 export const TimestampStepMap = [
   {max: 1, step: 0.05},
@@ -99,6 +106,7 @@ export const DEFAULT_FILTER_STRUCTURE = {
   fixedDomain: false,
   enlarged: false,
   isAnimating: false,
+  animationWindow: ANIMATION_WINDOW.free,
   speed: 1,
 
   // field specific
@@ -123,8 +131,7 @@ export const LAYER_FILTERS = [FILTER_TYPES.polygon];
 
 /**
  * Generates a filter with a dataset id as dataId
- * @param {[string]} dataId
- * @return {object} filter
+ * @type {typeof import('./filter-utils').getDefaultFilter}
  */
 export function getDefaultFilter(dataId) {
   return {
@@ -137,9 +144,10 @@ export function getDefaultFilter(dataId) {
 
 /**
  * Check if a filter is valid based on the given dataId
- * @param {object} filter to validate
- * @param {string} dataset id to validate filter against
- * @return {boolean} true if a filter is valid, false otherwise
+ * @param  filter to validate
+ * @param  datasetId id to validate filter against
+ * @return true if a filter is valid, false otherwise
+ * @type {typeof import('./filter-utils').shouldApplyFilter}
  */
 export function shouldApplyFilter(filter, datasetId) {
   const dataIds = toArray(filter.dataId);
@@ -151,7 +159,8 @@ export function shouldApplyFilter(filter, datasetId) {
  * @param dataset
  * @param filter
  * @param layers
- * @return {object}
+ * @return - {filter, dataset}
+ * @type {typeof import('./filter-utils').validatePolygonFilter}
  */
 export function validatePolygonFilter(dataset, filter, layers) {
   const failed = {dataset, filter: null};
@@ -185,7 +194,6 @@ export function validatePolygonFilter(dataset, filter, layers) {
 
 /**
  * Custom filter validators
- * @type {Function}
  */
 const filterValidators = {
   [FILTER_TYPES.polygon]: validatePolygonFilter
@@ -195,7 +203,8 @@ const filterValidators = {
  * Default validate filter function
  * @param dataset
  * @param filter
- * @return {*}
+ * @return - {filter, dataset}
+ * @type {typeof import('./filter-utils').validateFilter}
  */
 export function validateFilter(dataset, filter) {
   // match filter.dataId
@@ -229,6 +238,9 @@ export function validateFilter(dataset, filter) {
   }
 
   updatedFilter.value = adjustValueToFilterDomain(filter.value, updatedFilter);
+  updatedFilter.enlarged =
+    typeof filter.enlarged === 'boolean' ? filter.enlarged : updatedFilter.enlarged;
+
   if (updatedFilter.value === null) {
     // cannot adjust saved value to filter
     return failed;
@@ -244,11 +256,14 @@ export function validateFilter(dataset, filter) {
  * Validate saved filter config with new data,
  * calculate domain and fieldIdx based new fields and data
  *
- * @param {Object} dataset
- * @param {Object} filter - filter to be validate
- * @return {Object | null} - validated filter
+ * @param dataset
+ * @param filter - filter to be validate
+ * @param layers - layers
+ * @return validated filter
+ * @type {typeof import('./filter-utils').validateFilterWithData}
  */
 export function validateFilterWithData(dataset, filter, layers) {
+  // @ts-ignore
   return filterValidators.hasOwnProperty(filter.type)
     ? filterValidators[filter.type](dataset, filter, layers)
     : validateFilter(dataset, filter);
@@ -263,7 +278,7 @@ export function validateFilterWithData(dataset, filter, layers) {
 function validateFilterYAxis(filter, dataset) {
   // TODO: validate yAxis against other datasets
 
-  const {fields, allData} = dataset;
+  const {fields} = dataset;
   const {yAxis} = filter;
   // TODO: validate yAxis against other datasets
   if (yAxis) {
@@ -273,7 +288,7 @@ function validateFilterYAxis(filter, dataset) {
       ? {
           ...filter,
           yAxis: matchedAxis,
-          ...getFilterPlot({...filter, yAxis: matchedAxis}, allData)
+          ...getFilterPlot({...filter, yAxis: matchedAxis}, dataset)
         }
       : filter;
   }
@@ -284,13 +299,14 @@ function validateFilterYAxis(filter, dataset) {
 /**
  * Get default filter prop based on field type
  *
- * @param {Array<Array>} allData
- * @param {Object} field
- * @returns {Object} default filter
+ * @param field
+ * @param fieldDomain
+ * @returns default filter
+ * @type {typeof import('./filter-utils').getFilterProps}
  */
-export function getFilterProps(allData, field) {
+export function getFilterProps(field, fieldDomain) {
   const filterProps = {
-    ...getFieldDomain(allData, field),
+    ...fieldDomain,
     fieldType: field.type
   };
 
@@ -299,7 +315,7 @@ export function getFilterProps(allData, field) {
     case ALL_FIELD_TYPES.integer:
       return {
         ...filterProps,
-        value: filterProps.domain,
+        value: fieldDomain.domain,
         type: FILTER_TYPES.range,
         typeOptions: [FILTER_TYPES.range],
         gpu: true
@@ -337,41 +353,6 @@ export function getFilterProps(allData, field) {
   }
 }
 
-/**
- * Calculate field domain based on field type and data
- *
- * @param {Array<Array>} allData
- * @param {Object} field
- * @returns {Object} with domain as key
- */
-export function getFieldDomain(allData, field) {
-  const fieldIdx = field.tableFieldIndex - 1;
-  const isTime = field.type === ALL_FIELD_TYPES.timestamp;
-  const valueAccessor = maybeToDate.bind(null, isTime, fieldIdx, field.format);
-  let domain;
-
-  switch (field.type) {
-    case ALL_FIELD_TYPES.real:
-    case ALL_FIELD_TYPES.integer:
-      // calculate domain and step
-      return getNumericFieldDomain(allData, valueAccessor);
-
-    case ALL_FIELD_TYPES.boolean:
-      return {domain: [true, false]};
-
-    case ALL_FIELD_TYPES.string:
-    case ALL_FIELD_TYPES.date:
-      domain = ScaleUtils.getOrdinalDomain(allData, valueAccessor);
-      return {domain};
-
-    case ALL_FIELD_TYPES.timestamp:
-      return getTimestampFieldDomain(allData, valueAccessor);
-
-    default:
-      return {domain: ScaleUtils.getOrdinalDomain(allData, valueAccessor)};
-  }
-}
-
 export const getPolygonFilterFunctor = (layer, filter) => {
   const getPosition = layer.getPositionAccessor();
 
@@ -394,6 +375,22 @@ export const getPolygonFilterFunctor = (layer, filter) => {
           ].every(point => isInPolygon(point, filter.value))
         );
       };
+    case LAYER_TYPES.hexagonId:
+      if (layer.dataToFeature && layer.dataToFeature.centroids) {
+        return (data, index) => {
+          // null or getCentroid({id})
+          const centroid = layer.dataToFeature.centroids[index];
+          return centroid && isInPolygon(centroid, filter.value);
+        };
+      }
+      return data => {
+        const id = getPosition({data});
+        if (!h3IsValid(id)) {
+          return false;
+        }
+        const pos = getCentroid({id});
+        return pos.every(Number.isFinite) && isInPolygon(pos, filter.value);
+      };
     default:
       return () => true;
   }
@@ -404,11 +401,13 @@ export const getPolygonFilterFunctor = (layer, filter) => {
  * @param dataId Dataset id
  * @param filter Filter object
  * @param layers list of layers to filter upon
- * @return {*}
+ * @return filterFunction
+ * @type {typeof import('./filter-utils').getFilterFunction}
  */
 export function getFilterFunction(field, dataId, filter, layers) {
-  // field could be null
-  const valueAccessor = data => (field ? data[field.tableFieldIndex - 1] : null);
+  // field could be null in polygon filter
+  const valueAccessor = field ? field.valueAccessor : data => null;
+  const defaultFunc = d => true;
 
   switch (filter.type) {
     case FILTER_TYPES.range:
@@ -418,6 +417,9 @@ export function getFilterFunction(field, dataId, filter, layers) {
     case FILTER_TYPES.select:
       return data => valueAccessor(data) === filter.value;
     case FILTER_TYPES.timeRange:
+      if (!field) {
+        return defaultFunc;
+      }
       const mappedValue = get(field, ['filterProps', 'mappedValue']);
       const accessor = Array.isArray(mappedValue)
         ? (data, index) => mappedValue[index]
@@ -425,17 +427,17 @@ export function getFilterFunction(field, dataId, filter, layers) {
       return (data, index) => isInRange(accessor(data, index), filter.value);
     case FILTER_TYPES.polygon:
       if (!layers || !layers.length) {
-        return () => true;
+        return defaultFunc;
       }
-
+      // @ts-ignore
       const layerFilterFunctions = filter.layerId
         .map(id => layers.find(l => l.id === id))
         .filter(l => l && l.config.dataId === dataId)
         .map(layer => getPolygonFilterFunctor(layer, filter));
 
-      return data => layerFilterFunctions.every(filterFunc => filterFunc(data));
+      return (data, index) => layerFilterFunctions.every(filterFunc => filterFunc(data, index));
     default:
-      return () => true;
+      return defaultFunc;
   }
 }
 
@@ -444,79 +446,9 @@ export function updateFilterDataId(dataId) {
 }
 
 /**
- * Filter data based on an array of filters
- *
- * @param {Object} dataset
- * @param {Array<Object>} filters
- * @param {Object} opt
- * @param {Object} opt.cpuOnly only allow cpu filtering
- * @param {Object} opt.ignoreDomain ignore filter for domain calculation
- * @returns {Object} dataset
- * @returns {Array<Number>} dataset.filteredIndex
- * @returns {Array<Number>} dataset.filteredIndexForDomain
+ * @type {typeof import('./filter-utils').filterDataByFilterTypes}
  */
-export function filterDataset(dataset, filters, layers, opt = {}) {
-  const {allData, id: dataId, filterRecord: oldFilterRecord, fields} = dataset;
-
-  // if there is no filters
-  const filterRecord = getFilterRecord(dataId, filters, opt);
-
-  const newDataset = set(['filterRecord'], filterRecord, dataset);
-
-  if (!filters.length) {
-    return {
-      ...newDataset,
-      gpuFilter: getGpuFilterProps(filters, dataId, fields),
-      filteredIndex: dataset.allIndexes,
-      filteredIndexForDomain: dataset.allIndexes
-    };
-  }
-
-  const changedFilters = diffFilters(filterRecord, oldFilterRecord);
-
-  // generate 2 sets of filter result
-  // filteredIndex used to calculate layer data
-  // filteredIndexForDomain used to calculate layer Domain
-  const shouldCalDomain = Boolean(changedFilters.dynamicDomain);
-  const shouldCalIndex = Boolean(changedFilters.cpu);
-
-  let filterResult = {};
-  if (shouldCalDomain || shouldCalIndex) {
-    const dynamicDomainFilters = shouldCalDomain ? filterRecord.dynamicDomain : null;
-    const cpuFilters = shouldCalIndex ? filterRecord.cpu : null;
-
-    const filterFuncs = filters.reduce((acc, filter) => {
-      const fieldIndex = getDatasetFieldIndexForFilter(dataset.id, filter);
-      const field = fieldIndex !== -1 ? fields[fieldIndex] : null;
-
-      return {
-        ...acc,
-        [filter.id]: getFilterFunction(field, dataset.id, filter, layers)
-      };
-    }, {});
-
-    filterResult = filterDataByFilterTypes(
-      {dynamicDomainFilters, cpuFilters, filterFuncs},
-      allData
-    );
-  }
-
-  return {
-    ...newDataset,
-    ...filterResult,
-    gpuFilter: getGpuFilterProps(filters, dataId, fields)
-  };
-}
-
-/**
- *
- * @param {Object} filters
- * @param {Array|null} filters.dynamicDomainFilters
- * @param {Array|null} filters.cpuFilters
- * @param {Object} filters.filterFuncs
- * @returns {{filteredIndex: Array, filteredIndexForDomain: Array}} filteredIndex and filteredIndexForDomain
- */
-function filterDataByFilterTypes({dynamicDomainFilters, cpuFilters, filterFuncs}, allData) {
+export function filterDataByFilterTypes({dynamicDomainFilters, cpuFilters, filterFuncs}, allData) {
   const result = {
     ...(dynamicDomainFilters ? {filteredIndexForDomain: []} : {}),
     ...(cpuFilters ? {filteredIndex: []} : {})
@@ -529,12 +461,14 @@ function filterDataByFilterTypes({dynamicDomainFilters, cpuFilters, filterFuncs}
       dynamicDomainFilters && dynamicDomainFilters.every(filter => filterFuncs[filter.id](d, i));
 
     if (matchForDomain) {
+      // @ts-ignore
       result.filteredIndexForDomain.push(i);
     }
 
     const matchForRender = cpuFilters && cpuFilters.every(filter => filterFuncs[filter.id](d, i));
 
     if (matchForRender) {
+      // @ts-ignore
       result.filteredIndex.push(i);
     }
   }
@@ -544,13 +478,12 @@ function filterDataByFilterTypes({dynamicDomainFilters, cpuFilters, filterFuncs}
 
 /**
  * Get a record of filters based on domain type and gpu / cpu
- * @param {string} dataId
- * @param {Array<Object>} filters
- * @param {Object} opt.cpuOnly only allow cpu filtering
- * @param {Object} opt.ignoreDomain ignore filter for domain calculation
- * @returns {{dynamicDomain: Array, fixedDomain: Array, cpu: Array, gpu: Array}} filterRecord
+ * @type {typeof import('./filter-utils').getFilterRecord}
  */
 export function getFilterRecord(dataId, filters, opt = {}) {
+  /**
+   * @type {FilterRecord}
+   */
   const filterRecord = {
     dynamicDomain: [],
     fixedDomain: [],
@@ -574,9 +507,7 @@ export function getFilterRecord(dataId, filters, opt = {}) {
 
 /**
  * Compare filter records to get what has changed
- * @param {Object} filterRecord
- * @param {Object} oldFilterRecord
- * @returns {{dynamicDomain: Object, fixedDomain: Object, cpu: Object, gpu: Object}} changed filters based on type
+ * @type {typeof import('./filter-utils').diffFilters}
  */
 export function diffFilters(filterRecord, oldFilterRecord = {}) {
   let filterChanged = {};
@@ -610,6 +541,7 @@ export function diffFilters(filterRecord, oldFilterRecord = {}) {
     }
   });
 
+  // @ts-ignore
   return filterChanged;
 }
 /**
@@ -617,10 +549,8 @@ export function diffFilters(filterRecord, oldFilterRecord = {}) {
  * Check if value of filter within filter domain, if not adjust it to match
  * filter domain
  *
- * @param {Array<string> | string | Number | Array<Number>} value
- * @param {Array} filter.domain
- * @param {String} filter.type
- * @returns {*} - adjusted value to match filter or null to remove filter
+ * @type {typeof import('./filter-utils').adjustValueToFilterDomain}
+ * @returns value - adjusted value to match filter or null to remove filter
  */
 /* eslint-disable complexity */
 export function adjustValueToFilterDomain(value, {domain, type}) {
@@ -656,9 +586,7 @@ export function adjustValueToFilterDomain(value, {domain, type}) {
 /**
  * Calculate numeric domain and suitable step
  *
- * @param {Object[]} data
- * @param {function} valueAccessor
- * @returns {object} domain and step
+ * @type {typeof import('./filter-utils').getNumericFieldDomain}
  */
 export function getNumericFieldDomain(data, valueAccessor) {
   let domain = [0, 1];
@@ -680,11 +608,17 @@ export function getNumericFieldDomain(data, valueAccessor) {
     domain[1] = formatNumberByStep(domain[1], step, 'ceil');
   }
 
+  // @ts-ignore
   const {histogram, enlargedHistogram} = getHistogram(domain, mappedValue);
 
   return {domain, step, histogram, enlargedHistogram};
 }
 
+/**
+ * Calculate step size for range and timerange filter
+ *
+ * @type {typeof import('./filter-utils').getNumericStepSize}
+ */
 export function getNumericStepSize(diff) {
   diff = Math.abs(diff);
 
@@ -694,37 +628,27 @@ export function getNumericStepSize(diff) {
     return 0.01;
   } else if (diff > 1) {
     return 0.001;
-  } else if (diff <= 1) {
-    // Try to get at least 1000 steps - and keep the step size below that of
-    // the (diff > 1) case.
-    const x = diff / 1000;
-    // Find the exponent and truncate to 10 to the power of that exponent
-
-    const exponentialForm = x.toExponential();
-    const exponent = parseFloat(exponentialForm.split('e')[1]);
-
-    // Getting ready for node 12
-    // this is why we need decimal.js
-    // Math.pow(10, -5) = 0.000009999999999999999
-    //  the above result shows in browser and node 10
-    //  node 12 behaves correctly
-
-    return new Decimal(10).pow(exponent).toNumber();
   }
+  // Try to get at least 1000 steps - and keep the step size below that of
+  // the (diff > 1) case.
+  const x = diff / 1000;
+  // Find the exponent and truncate to 10 to the power of that exponent
+
+  const exponentialForm = x.toExponential();
+  const exponent = parseFloat(exponentialForm.split('e')[1]);
+
+  // Getting ready for node 12
+  // this is why we need decimal.js
+  // Math.pow(10, -5) = 0.000009999999999999999
+  // the above result shows in browser and node 10
+  // node 12 behaves correctly
+  return new Decimal(10).pow(exponent).toNumber();
 }
 
 /**
  * Calculate timestamp domain and suitable step
  *
- * @param {Array<Array>} data
- * @param {Function} valueAccessor
- * @returns {{
- *  domain: Array<Number>,
- *  step: Number,
- *  mappedValue: Array<Number>,
- *  histogram: Array<Object>,
- *  enlargedHistogram: Array<Object>
- * }} timestamp field domain
+ * @type {typeof import('./filter-utils').getTimestampFieldDomain}
  */
 export function getTimestampFieldDomain(data, valueAccessor) {
   // to avoid converting string format time to epoch
@@ -732,6 +656,8 @@ export function getTimestampFieldDomain(data, valueAccessor) {
 
   const mappedValue = Array.isArray(data) ? data.map(valueAccessor) : [];
   const domain = ScaleUtils.getLinearDomain(mappedValue);
+  const defaultTimeFormat = getTimeWidgetTitleFormatter(domain);
+
   let step = 0.01;
 
   const diff = domain[1] - domain[0];
@@ -742,15 +668,19 @@ export function getTimestampFieldDomain(data, valueAccessor) {
 
   const {histogram, enlargedHistogram} = getHistogram(domain, mappedValue);
 
-  return {domain, step, mappedValue, histogram, enlargedHistogram};
+  return {
+    domain,
+    step,
+    mappedValue,
+    histogram,
+    enlargedHistogram,
+    defaultTimeFormat
+  };
 }
 
 /**
  *
- * @param {Array<Number>} domain
- * @param {Array<Number>} mappedValue
- * @param {Number} bins
- * @returns {Array<{count: Number, x0: Number, x1: number}>} histogram
+ * @type {typeof import('./filter-utils').histogramConstruct}
  */
 export function histogramConstruct(domain, mappedValue, bins) {
   return d3Histogram()
@@ -765,9 +695,7 @@ export function histogramConstruct(domain, mappedValue, bins) {
 /**
  * Calculate histogram from domain and array of values
  *
- * @param {Array<Number>} domain
- * @param {Array<Object>} mappedValue
- * @returns {{histogram: Array<Object>, enlargedHistogram: Array<Object>}} 2 sets of histogram
+ * @type {typeof import('./filter-utils').getHistogram}
  */
 export function getHistogram(domain, mappedValue) {
   const histogram = histogramConstruct(domain, mappedValue, histogramBins);
@@ -792,6 +720,10 @@ export function formatNumberByStep(val, step, bound) {
   return Math.ceil(val * (1 / step)) / (1 / step);
 }
 
+/**
+ *
+ * @type {typeof import('./filter-utils').isInRange}
+ */
 export function isInRange(val, domain) {
   if (!Array.isArray(domain)) {
     return false;
@@ -810,42 +742,39 @@ export function isInRange(val, domain) {
 export function isInPolygon(point, polygon) {
   return booleanWithin(turfPoint(point), polygon);
 }
-
+export function isValidTimeDomain(domain) {
+  return Array.isArray(domain) && domain.every(Number.isFinite);
+}
 export function getTimeWidgetTitleFormatter(domain) {
-  if (!Array.isArray(domain)) {
+  if (!isValidTimeDomain(domain)) {
     return null;
   }
 
   const diff = domain[1] - domain[0];
-  return diff > durationYear
-    ? 'MM/DD/YY'
-    : diff > durationDay
-    ? 'MM/DD/YY hh:mma'
-    : 'MM/DD/YY hh:mm:ssa';
+
+  // Local aware formats
+  // https://momentjs.com/docs/#/parsing/string-format
+  return diff > durationYear ? 'L' : diff > durationDay ? 'L LT' : 'L LTS';
 }
 
 export function getTimeWidgetHintFormatter(domain) {
-  if (!Array.isArray(domain)) {
+  if (!isValidTimeDomain(domain)) {
     return null;
   }
 
   const diff = domain[1] - domain[0];
-  return diff > durationYear
-    ? 'MM/DD/YY'
-    : diff > durationWeek
-    ? 'MM/DD'
+  return diff > durationWeek
+    ? 'L'
     : diff > durationDay
-    ? 'MM/DD hha'
+    ? 'L LT'
     : diff > durationHour
-    ? 'hh:mma'
-    : 'hh:mm:ssa';
+    ? 'LT'
+    : 'LTS';
 }
 
 /**
  * Sanity check on filters to prepare for save
- * @param {String} type - filter type
- * @param {*} value - filter value
- * @returns {boolean} whether filter is value
+ * @type {typeof import('./filter-utils').isValidFilterValue}
  */
 /* eslint-disable complexity */
 export function isValidFilterValue(type, value) {
@@ -875,20 +804,29 @@ export function isValidFilterValue(type, value) {
   }
 }
 
-export function getFilterPlot(filter, allData) {
+/**
+ *
+ * @type {typeof import('./filter-utils').getFilterPlot}
+ */
+export function getFilterPlot(filter, dataset) {
   if (filter.plotType === PLOT_TYPES.histogram || !filter.yAxis) {
     // histogram should be calculated when create filter
     return {};
   }
 
-  const {mappedValue} = filter;
+  const {mappedValue = []} = filter;
   const {yAxis} = filter;
+  const fieldIdx = dataset.getColumnFieldIdx(yAxis.name);
+  if (fieldIdx < 0) {
+    Console.warn(`yAxis ${yAxis.name} does not exist in dataset`);
+    return {lineChart: {}, yAxis};
+  }
 
   // return lineChart
-  const series = allData
+  const series = dataset.allData
     .map((d, i) => ({
       x: mappedValue[i],
-      y: d[yAxis.tableFieldIndex - 1]
+      y: d[fieldIdx]
     }))
     .filter(({x, y}) => Number.isFinite(x) && Number.isFinite(y))
     .sort((a, b) => ascending(a.x, b.x));
@@ -917,42 +855,38 @@ export function getDefaultFilterPlotType(filter) {
  * @param datasetIds list of dataset ids to be filtered
  * @param datasets all datasets
  * @param filters all filters to be applied to datasets
- * @return {{[datasetId: string]: Object}} datasets - new updated datasets
+ * @return datasets - new updated datasets
+ * @type {typeof import('./filter-utils').applyFiltersToDatasets}
  */
 export function applyFiltersToDatasets(datasetIds, datasets, filters, layers) {
   const dataIds = toArray(datasetIds);
   return dataIds.reduce((acc, dataId) => {
     const layersToFilter = (layers || []).filter(l => l.config.dataId === dataId);
     const appliedFilters = filters.filter(d => shouldApplyFilter(d, dataId));
+    const table = datasets[dataId];
 
     return {
       ...acc,
-      [dataId]: filterDataset(datasets[dataId], appliedFilters, layersToFilter)
+      [dataId]: table.filterTable(appliedFilters, layersToFilter, {})
     };
   }, datasets);
 }
 
 /**
  * Applies a new field name value to fielter and update both filter and dataset
- * @param {Object} filter - to be applied the new field name on
- * @param {Object} dataset - dataset the field belongs to
- * @param {string} fieldName - field.name
- * @param {Number} filterDatasetIndex - field.name
- * @param {Number} filters - current
- * @param {Object} option
- * @return {Object} {filter, datasets}
+ * @param filter - to be applied the new field name on
+ * @param dataset - dataset the field belongs to
+ * @param fieldName - field.name
+ * @param filterDatasetIndex - field.name
+ * @param option
+ * @return - {filter, datasets}
+ * @type {typeof import('./filter-utils').applyFilterFieldName}
  */
-export function applyFilterFieldName(
-  filter,
-  dataset,
-  fieldName,
-  filterDatasetIndex = 0,
-  {mergeDomain = false} = {}
-) {
+export function applyFilterFieldName(filter, dataset, fieldName, filterDatasetIndex = 0, option) {
   // using filterDatasetIndex we can filter only the specified dataset
-  const {fields, allData} = dataset;
+  const mergeDomain = option && option.hasOwnProperty('mergeDomain') ? option.mergeDomain : false;
 
-  const fieldIndex = fields.findIndex(f => f.name === fieldName);
+  const fieldIndex = dataset.getColumnFieldIdx(fieldName);
   // if no field with same name is found, move to the next datasets
   if (fieldIndex === -1) {
     // throw new Error(`fieldIndex not found. Dataset must contain a property with name: ${fieldName}`);
@@ -960,44 +894,27 @@ export function applyFilterFieldName(
   }
 
   // TODO: validate field type
-  const field = fields[fieldIndex];
-  const filterProps = field.hasOwnProperty('filterProps')
-    ? field.filterProps
-    : getFilterProps(allData, field);
+  const filterProps = dataset.getColumnFilterProps(fieldName);
 
   const newFilter = {
     ...(mergeDomain ? mergeFilterDomainStep(filter, filterProps) : {...filter, ...filterProps}),
-    name: Object.assign([].concat(filter.name), {[filterDatasetIndex]: field.name}),
-    fieldIdx: Object.assign([].concat(filter.fieldIdx), {
-      [filterDatasetIndex]: field.tableFieldIndex - 1
+    name: Object.assign([...toArray(filter.name)], {[filterDatasetIndex]: fieldName}),
+    fieldIdx: Object.assign([...toArray(filter.fieldIdx)], {
+      [filterDatasetIndex]: fieldIndex
     }),
     // TODO, since we allow to add multiple fields to a filter we can no longer freeze the filter
     freeze: true
   };
 
-  const fieldWithFilterProps = {
-    ...field,
-    filterProps
-  };
-
-  const newFields = Object.assign([].concat(fields), {[fieldIndex]: fieldWithFilterProps});
-
   return {
     filter: newFilter,
-    dataset: {
-      ...dataset,
-      fields: newFields
-    }
+    dataset
   };
 }
 
 /**
  * Merge one filter with other filter prop domain
- * @param filter
- * @param filterProps
- * @param fieldIndex
- * @param datasetIndex
- * @return {*}
+ * @type {typeof import('./filter-utils').mergeFilterDomainStep}
  */
 /* eslint-disable complexity */
 export function mergeFilterDomainStep(filter, filterProps) {
@@ -1032,6 +949,7 @@ export function mergeFilterDomainStep(filter, filterProps) {
       };
 
     case ALL_FIELD_TYPES.timestamp:
+      // @ts-ignore
       const step = filter.step < filterProps.step ? filter.step : filterProps.step;
 
       return {
@@ -1046,6 +964,10 @@ export function mergeFilterDomainStep(filter, filterProps) {
 }
 /* eslint-enable complexity */
 
+/**
+ * Generates polygon filter
+ * @type {typeof import('./filter-utils').featureToFilterValue}
+ */
 export const featureToFilterValue = (feature, filterId, properties = {}) => ({
   ...feature,
   id: feature.id,
@@ -1056,29 +978,20 @@ export const featureToFilterValue = (feature, filterId, properties = {}) => ({
   }
 });
 
+/**
+ * @type {typeof import('./filter-utils').getFilterIdInFeature}
+ */
 export const getFilterIdInFeature = f => get(f, ['properties', 'filterId']);
 
 /**
  * Generates polygon filter
- * @param layers array of layers
- * @param feature polygon to use
- * @return {object} filter
+ * @type {typeof import('./filter-utils').generatePolygonFilter}
  */
 export function generatePolygonFilter(layers, feature) {
-  const {dataId, layerId, name} = layers.reduce(
-    (acc, layer) => ({
-      ...acc,
-      dataId: [...acc.dataId, layer.config.dataId],
-      layerId: [...acc.layerId, layer.id],
-      name: [...acc.name, layer.config.label]
-    }),
-    {
-      dataId: [],
-      layerId: [],
-      name: []
-    }
-  );
-
+  const dataId = layers.map(l => l.config.dataId).filter(d => d);
+  const layerId = layers.map(l => l.id);
+  const name = layers.map(l => l.config.label);
+  // @ts-ignore
   const filter = getDefaultFilter(dataId);
   return {
     ...filter,
@@ -1092,58 +1005,103 @@ export function generatePolygonFilter(layers, feature) {
 
 /**
  * Run filter entirely on CPU
- * @param {Object} state - visState
- * @param {string} dataId
- * @return {Object} state state with updated datasets
+ * @type {typeof import('./filter-utils').filterDatasetCPU}
  */
 export function filterDatasetCPU(state, dataId) {
   const datasetFilters = state.filters.filter(f => f.dataId.includes(dataId));
-  const selectedDataset = state.datasets[dataId];
+  const dataset = state.datasets[dataId];
 
-  if (!selectedDataset) {
+  if (!dataset) {
     return state;
   }
 
-  const opt = {
-    cpuOnly: true,
-    ignoreDomain: true
-  };
-
-  if (!datasetFilters.length) {
-    // no filter
-    const filtered = {
-      ...selectedDataset,
-      filteredIdxCPU: selectedDataset.allIndexes,
-      filterRecordCPU: getFilterRecord(dataId, state.filters, opt)
-    };
-
-    return set(['datasets', dataId], filtered, state);
-  }
-
-  // no gpu filter
-  if (!datasetFilters.find(f => f.gpu)) {
-    const filtered = {
-      ...selectedDataset,
-      filteredIdxCPU: selectedDataset.filteredIndex,
-      filterRecordCPU: getFilterRecord(dataId, state.filters, opt)
-    };
-    return set(['datasets', dataId], filtered, state);
-  }
-
-  // make a copy for cpu filtering
-  const copied = {
-    ...selectedDataset,
-    filterRecord: selectedDataset.filterRecordCPU,
-    filteredIndex: selectedDataset.filteredIdxCPU
-  };
-
-  const filtered = filterDataset(copied, state.filters, state.layers, opt);
-
-  const cpuFilteredDataset = {
-    ...selectedDataset,
-    filteredIdxCPU: filtered.filteredIndex,
-    filterRecordCPU: filtered.filterRecord
-  };
+  const cpuFilteredDataset = dataset.filterTableCPU(datasetFilters, state.layers);
 
   return set(['datasets', dataId], cpuFilteredDataset, state);
+}
+
+/**
+ * Validate parsed filters with datasets and add filterProps to field
+ * @type {typeof import('./filter-utils').validateFiltersUpdateDatasets}
+ */
+export function validateFiltersUpdateDatasets(state, filtersToValidate = []) {
+  const validated = [];
+  const failed = [];
+  const {datasets} = state;
+  let updatedDatasets = datasets;
+
+  // merge filters
+  filtersToValidate.forEach(filter => {
+    // we can only look for datasets define in the filter dataId
+    const datasetIds = toArray(filter.dataId);
+
+    // we can merge a filter only if all datasets in filter.dataId are loaded
+    if (datasetIds.every(d => datasets[d])) {
+      // all datasetIds in filter must be present the state datasets
+      const {filter: validatedFilter, applyToDatasets, augmentedDatasets} = datasetIds.reduce(
+        (acc, datasetId) => {
+          const dataset = updatedDatasets[datasetId];
+          const layers = state.layers.filter(l => l.config.dataId === dataset.id);
+          const {filter: updatedFilter, dataset: updatedDataset} = validateFilterWithData(
+            acc.augmentedDatasets[datasetId] || dataset,
+            filter,
+            layers
+          );
+
+          if (updatedFilter) {
+            return {
+              ...acc,
+              // merge filter props
+              filter: acc.filter
+                ? {
+                    ...acc.filter,
+                    ...mergeFilterDomainStep(acc, updatedFilter)
+                  }
+                : updatedFilter,
+
+              applyToDatasets: [...acc.applyToDatasets, datasetId],
+
+              augmentedDatasets: {
+                ...acc.augmentedDatasets,
+                [datasetId]: updatedDataset
+              }
+            };
+          }
+
+          return acc;
+        },
+        {
+          filter: null,
+          applyToDatasets: [],
+          augmentedDatasets: {}
+        }
+      );
+
+      if (validatedFilter && isEqual(datasetIds, applyToDatasets)) {
+        validated.push(validatedFilter);
+        updatedDatasets = {
+          ...updatedDatasets,
+          ...augmentedDatasets
+        };
+      }
+    } else {
+      failed.push(filter);
+    }
+  });
+
+  return {validated, failed, updatedDatasets};
+}
+
+/**
+ * Retrieve interval bins for time filter
+ * @type {typeof import('./filter-utils').getIntervalBins}
+ */
+export function getIntervalBins(filter) {
+  const {bins} = filter;
+  const interval = filter.plotType?.interval;
+  if (!interval || !bins || Object.keys(bins).length === 0) {
+    return null;
+  }
+  const values = Object.values(bins);
+  return values[0] ? values[0][interval] : null;
 }

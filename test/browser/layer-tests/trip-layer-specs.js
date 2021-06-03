@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,9 @@
 
 /* eslint-disable max-statements */
 import test from 'tape';
-import TripLayer, {defaultWidth} from 'layers/trip-layer/trip-layer';
+import cloneDeep from 'lodash.clonedeep';
+
+import TripLayer, {defaultLineWidth} from 'layers/trip-layer/trip-layer';
 
 import {
   dataId,
@@ -31,7 +33,9 @@ import {
   valueFilterDomain0,
   animationConfig
 } from 'test/helpers/layer-utils';
+import {parseTripGeoJsonTimestamp} from 'layers/trip-layer/trip-utils';
 import {TripLayerMeta, dataToFeature, dataToTimeStamp} from 'test/fixtures/trip-geojson';
+import {copyTableAndUpdate} from 'utils/table-utils/kepler-table';
 
 test('#TripLayer -> constructor', t => {
   const TEST_CASES = {
@@ -74,10 +78,7 @@ test('#TripLayer -> formatLayerData', t => {
         }
       },
       datasets: {
-        [dataId]: {
-          ...prepareTripGeoDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(prepareTripGeoDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -124,7 +125,7 @@ test('#TripLayer -> formatLayerData', t => {
         );
         t.deepEqual(
           layerData.data.map(layerData.getWidth),
-          [defaultWidth, defaultWidth, defaultWidth],
+          [defaultLineWidth, defaultLineWidth, defaultLineWidth],
           'getWidth should return correct value'
         );
         t.deepEqual(
@@ -198,10 +199,7 @@ test('#TripLayer -> formatLayerData', t => {
         }
       },
       datasets: {
-        [dataId]: {
-          ...prepareTripGeoDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(prepareTripGeoDataset, {filteredIndex})
       },
       assert: result => {
         const {layerData, layer} = result;
@@ -282,10 +280,7 @@ test('#TripLayer -> renderLayer', t => {
         }
       },
       datasets: {
-        [dataId]: {
-          ...prepareTripGeoDataset,
-          filteredIndex
-        }
+        [dataId]: copyTableAndUpdate(prepareTripGeoDataset, {filteredIndex})
       },
       renderArgs: {
         animationConfig
@@ -398,5 +393,24 @@ test('#TripLayer -> renderLayer', t => {
   ];
 
   testRenderLayerCases(t, TripLayer, TEST_CASES);
+  t.end();
+});
+
+test('#TripLayer -> parseTripGeoJsonTimestamp', t => {
+  // mix with illegal character
+  const dataToFeature1 = cloneDeep(dataToFeature);
+  dataToFeature1[0].geometry.coordinates[0][3] = 0;
+  dataToFeature1[1].geometry.coordinates[0][3] = NaN;
+  dataToFeature1[2].geometry.coordinates[0][3] = null;
+  dataToFeature1[3].geometry.coordinates[0][3] = undefined;
+  dataToFeature1[4].geometry.coordinates[0][3] = 'a';
+
+  dataToFeature1[0].geometry.coordinates[
+    dataToFeature1[0].geometry.coordinates.length - 1
+  ][3] = NaN;
+
+  const result = parseTripGeoJsonTimestamp(dataToFeature1);
+
+  t.deepEqual(result.animationDomain, [1565577261, 1565578836], 'should filter out illugal value');
   t.end();
 });

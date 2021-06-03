@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ import {combineReducers} from 'redux';
 import {keplerGlReducer} from 'kepler.gl/reducers';
 
 // TODO: remove this after added middleware to files
-import {enhanceReduxMiddleware} from 'kepler.gl/dist/middleware';
+import {enhanceReduxMiddleware} from 'kepler.gl/middleware';
 
 const customizedKeplerGlReducer = keplerGlReducer.initialState({
   uiState: {

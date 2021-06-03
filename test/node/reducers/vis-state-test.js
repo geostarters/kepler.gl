@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,20 +20,25 @@
 
 /* eslint-disable max-statements */
 import test from 'tape-catch';
+import sinon from 'sinon';
+import {console as Console} from 'global/window';
+
+import {drainTasksForTesting, succeedTaskInTest, errorTaskInTest} from 'react-palm/tasks';
 import CloneDeep from 'lodash.clonedeep';
 
 import * as VisStateActions from 'actions/vis-state-actions';
 import * as MapStateActions from 'actions/map-state-actions';
 import reducer from 'reducers/vis-state';
 
-import {INITIAL_VIS_STATE, defaultAnimationConfig} from 'reducers/vis-state-updaters';
-
+import {INITIAL_VIS_STATE, DEFAULT_ANIMATION_CONFIG} from 'reducers/vis-state-updaters';
+import {serializeLayer} from 'reducers/vis-state-merger';
 import {getDefaultInteraction} from 'utils/interaction-utils';
 import {getDefaultFilter} from 'utils/filter-utils';
 import {createNewDataEntry} from 'utils/dataset-utils';
+import {maybeToDate} from 'utils/data-utils';
 import {processCsvData, processGeojson} from 'processors/data-processor';
 import {Layer, KeplerGlLayers} from 'layers';
-import {EDITOR_MODES} from 'constants/default-settings';
+import {ALL_FIELD_TYPES, EDITOR_MODES} from 'constants/default-settings';
 
 const {ArcLayer, PointLayer, GeojsonLayer, LineLayer, TripLayer} = KeplerGlLayers;
 
@@ -44,11 +49,12 @@ import {
   geoJsonTripFilterProps,
   expectedDataToFeature,
   updatedGeoJsonLayer,
-  fields as geojsonFields
+  fields as geojsonFields,
+  rows as geojsonRows
 } from 'test/fixtures/geojson';
 
-import tripGeojson, {timeStampDomain} from 'test/fixtures/trip-geojson';
-import {mockPolygonFeature, mockPolygonData} from 'test/fixtures/polygon';
+import tripGeojson, {timeStampDomain, tripDataInfo} from 'test/fixtures/trip-geojson';
+import {mockPolygonFeature, mockPolygonFeature2, mockPolygonData} from 'test/fixtures/polygon';
 
 // test helpers
 import {
@@ -56,7 +62,8 @@ import {
   cmpLayers,
   cmpDatasets,
   cmpDataset,
-  cmpObjectKeys
+  cmpObjectKeys,
+  cmpField
 } from 'test/helpers/comparison-utils';
 import {
   applyActions,
@@ -65,8 +72,10 @@ import {
   StateWFilters,
   StateWFiles,
   StateWFilesFiltersLayerColor,
+  StateWH3Layer,
   testCsvDataId,
-  testGeoJsonDataId
+  testGeoJsonDataId,
+  InitialState
 } from 'test/helpers/mock-state';
 import {LAYER_VIS_CONFIGS, DEFAULT_TEXT_LABEL, DEFAULT_COLOR_UI} from 'layers/layer-factory';
 import {getNextColorMakerValue} from 'test/helpers/layer-utils';
@@ -101,35 +110,35 @@ const mockData = {
 const expectedFields = [
   {
     name: 'start_point_lat',
-    id: 'start_point_lat',
     type: 'real',
-    tableFieldIndex: 1,
+    fieldIdx: 0,
     analyzerType: 'FLOAT',
-    format: ''
+    format: '',
+    valueAccessor: values => values[1]
   },
   {
     name: 'start_point_lng',
-    id: 'start_point_lng',
     type: 'real',
-    tableFieldIndex: 2,
+    fieldIdx: 1,
     analyzerType: 'FLOAT',
-    format: ''
+    format: '',
+    valueAccessor: values => values[1]
   },
   {
     name: 'end_point_lat',
-    id: 'end_point_lat',
     type: 'real',
-    tableFieldIndex: 3,
+    fieldIdx: 2,
     analyzerType: 'FLOAT',
-    format: ''
+    format: '',
+    valueAccessor: values => values[2]
   },
   {
     name: 'end_point_lng',
-    id: 'end_point_lng',
     type: 'real',
-    tableFieldIndex: 4,
+    fieldIdx: 3,
     analyzerType: 'FLOAT',
-    format: ''
+    format: '',
+    valueAccessor: values => values[3]
   }
 ];
 
@@ -146,22 +155,22 @@ const mockRawData = {
     {
       name: 'start_point_lat',
       type: 'real',
-      tableFieldIndex: 1
+      fieldIdx: 0
     },
     {
       name: 'start_point_lng',
       type: 'real',
-      tableFieldIndex: 3
+      fieldIdx: 1
     },
     {
       name: 'end_point_lat',
       type: 'real',
-      tableFieldIndex: 4
+      fieldIdx: 2
     },
     {
       name: 'end_point_lng',
       type: 'real',
-      tableFieldIndex: 2
+      fieldIdx: 3
     }
   ],
   rows: [
@@ -474,9 +483,10 @@ test('#visStateReducer -> LAYER_TYPE_CHANGE.3 -> animationConfig', t => {
   t.deepEqual(
     nextState.animationConfig,
     {
-      ...defaultAnimationConfig,
+      ...DEFAULT_ANIMATION_CONFIG,
       domain: timeStampDomain,
-      currentTime: timeStampDomain[0]
+      currentTime: timeStampDomain[0],
+      defaultTimeFormat: 'L LTS'
     },
     'should update visState.animationConfig'
   );
@@ -495,7 +505,7 @@ test('#visStateReducer -> LAYER_TYPE_CHANGE.3 -> animationConfig', t => {
 
   t.deepEqual(
     nextState2.animationConfig,
-    defaultAnimationConfig,
+    DEFAULT_ANIMATION_CONFIG,
     'should set animationConfig to default'
   );
 
@@ -514,7 +524,15 @@ test('#visStateReducer -> LAYER_CONFIG_CHANGE -> isVisible -> animationConfig', 
 
   t.deepEqual(
     nextState.animationConfig,
-    defaultAnimationConfig,
+    {
+      domain: null,
+      currentTime: 1565577261000,
+      speed: 1,
+      isAnimating: false,
+      defaultTimeFormat: null,
+      timeFormat: null,
+      timezone: null
+    },
     'should set animationConfig to default'
   );
 
@@ -528,7 +546,8 @@ test('#visStateReducer -> LAYER_CONFIG_CHANGE -> isVisible -> animationConfig', 
     {
       ...nextState2.animationConfig,
       domain: timeStampDomain,
-      currentTime: timeStampDomain[0]
+      currentTime: timeStampDomain[0],
+      defaultTimeFormat: 'L LTS'
     },
     'should set animationConfig domain and currentTime'
   );
@@ -567,6 +586,146 @@ test('#visStateReducer -> LAYER_CONFIG_CHANGE -> isVisible -> splitMaps', t => {
   ];
   t.deepEqual(nextState2.splitMaps, initialSplitMaps2, 'should add layer to splitMaps');
 
+  t.end();
+});
+
+test('visStateReducer -> layerDataIdChangeUpdater', t => {
+  const initialState = CloneDeep(StateWFilesFiltersLayerColor).visState;
+  const pointLayer = initialState.layers[0];
+
+  const nextState = reducer(
+    initialState,
+    VisStateActions.layerConfigChange(pointLayer, {
+      dataId: testGeoJsonDataId
+    })
+  );
+  const updatedLayer = nextState.layers[0];
+
+  t.equal(updatedLayer.config.dataId, testGeoJsonDataId, 'should update point layer dataId');
+  t.deepEqual(
+    updatedLayer.config.columns,
+    {
+      altitude: {value: null, fieldIdx: -1, optional: true},
+      lat: {value: null, fieldIdx: -1},
+      lng: {value: null, fieldIdx: -1}
+    },
+    'should not update point layer column'
+  );
+  t.equal(updatedLayer.config.colorField, null, 'should not update point layer colorField');
+
+  // add layer
+  const nextState1 = reducer(nextState, VisStateActions.addLayer());
+  const newLayer = nextState1.layers[nextState1.layers.length - 1];
+
+  const nextState2 = reducer(
+    nextState1,
+    VisStateActions.layerConfigChange(newLayer, {
+      dataId: testGeoJsonDataId,
+      color: [1, 2, 3]
+    })
+  );
+
+  t.equal(
+    nextState2.layers[nextState1.layers.length - 1].config.dataId,
+    testGeoJsonDataId,
+    'should update new layer dataId'
+  );
+  t.deepEqual(
+    nextState2.layers[nextState1.layers.length - 1].config.color,
+    [1, 2, 3],
+    'should update new layer color'
+  );
+
+  t.end();
+});
+
+test('visStateReducer -> layerDataIdChangeUpdater -> geojson', t => {
+  const initialState = CloneDeep(StateWFilesFiltersLayerColor).visState;
+  const nextState = reducer(
+    initialState,
+    // add another geojson
+    VisStateActions.updateVisData([
+      {
+        info: {id: 'geojson2', label: 'Some Geojson'},
+        data: {fields: geojsonFields, rows: geojsonRows.slice(0, 3)}
+      }
+    ])
+  );
+
+  // find geojson layer
+  const index = nextState.layers.findIndex(l => l.type === 'geojson');
+  const geojsonLayer = nextState.layers[index];
+  const id = geojsonLayer.id;
+  // change dataId
+  const nextState1 = reducer(
+    nextState,
+    VisStateActions.layerConfigChange(geojsonLayer, {
+      dataId: 'geojson2'
+    })
+  );
+
+  const neextGeojsonLayer = nextState1.layers.find(l => l.id === id);
+
+  t.equal(neextGeojsonLayer.config.dataId, 'geojson2', 'should update layer dataId');
+  t.equal(neextGeojsonLayer.dataToFeature.length, 3, 'should calculate dataToFeature');
+  t.equal(nextState1.layerData[index].data.length, 3, 'should calculate layerData');
+
+  t.end();
+});
+
+test('visStateReducer -> layerDataIdChangeUpdater -> validation', t => {
+  const initialState = CloneDeep(StateWFilesFiltersLayerColor).visState;
+  const pointLayer = initialState.layers[0];
+  const textField = pointLayer.config.textLabel[0].field;
+
+  const newDataInfo = {
+    id: 'new-data-csv',
+    label: 'new Data'
+  };
+  const fieldIdx = testFields.findIndex(f => f.name === textField.name);
+
+  // remove 1 field from sample data
+  const fields = testFields.filter(f => f.name !== textField.name);
+  const rows = testAllData.map(row => [
+    ...row.slice(0, fieldIdx),
+    ...row.slice(fieldIdx + 1, row.length)
+  ]);
+  // add another dataset
+  const nextState = reducer(
+    initialState,
+    VisStateActions.updateVisData([{info: newDataInfo, data: {fields, rows}}])
+  );
+
+  const nextState1 = reducer(
+    nextState,
+    VisStateActions.layerConfigChange(pointLayer, {
+      dataId: 'new-data-csv'
+    })
+  );
+
+  const updatedLayer = nextState1.layers[0];
+  t.equal(updatedLayer.config.dataId, 'new-data-csv', 'should update point layer dataId');
+  t.equal(
+    updatedLayer.config.colorField.name,
+    'gps_data.types',
+    'should update point layer colorField'
+  );
+
+  t.deepEqual(
+    updatedLayer.config.columns,
+    {
+      altitude: {value: null, fieldIdx: -1, optional: true},
+      lat: {value: 'gps_data.lat', fieldIdx: 1},
+      lng: {value: 'gps_data.lng', fieldIdx: 2}
+    },
+    'should update point layer column'
+  );
+
+  t.equal(
+    updatedLayer.config.textLabel[0].field,
+    undefined,
+    'should assign fields not exists to undefined'
+  );
   t.end();
 });
 
@@ -612,18 +771,22 @@ test('#visStateReducer -> LAYER_TEXT_LABEL_CHANGE', t => {
     'should start text label prop'
   );
 
+  const valueAccessor = () => 1;
+  const expectedField = {
+    name: 'taro',
+    valueAccessor
+  };
+
   // set text label field
   const nextState3 = reducer(
     nextState2,
-    VisStateActions.layerTextLabelChange(nextState2.layers[0], 0, 'field', {
-      name: 'taro'
-    })
+    VisStateActions.layerTextLabelChange(nextState2.layers[0], 0, 'field', expectedField)
   );
 
   const expectedTextLabel1 = {
     ...DEFAULT_TEXT_LABEL,
     anchor: 'start',
-    field: {name: 'taro'}
+    field: expectedField
   };
 
   t.deepEqual(
@@ -637,6 +800,7 @@ test('#visStateReducer -> LAYER_TEXT_LABEL_CHANGE', t => {
     nextState3,
     VisStateActions.layerTextLabelChange(nextState3.layers[0], 1)
   );
+
   t.deepEqual(
     nextState4.layers[0].config.textLabel,
     [expectedTextLabel1, DEFAULT_TEXT_LABEL],
@@ -647,24 +811,29 @@ test('#visStateReducer -> LAYER_TEXT_LABEL_CHANGE', t => {
   const nextState5 = reducer(
     nextState4,
     VisStateActions.layerTextLabelChange(nextState4.layers[0], 'all', 'fields', [
-      {name: 'blue'},
-      {name: 'taro'}
+      {name: 'blue', valueAccessor},
+      {name: 'taro', valueAccessor}
     ])
   );
-  const expected5 = [expectedTextLabel1, {...DEFAULT_TEXT_LABEL, field: {name: 'blue'}}];
+
+  const expected5 = [
+    expectedTextLabel1,
+    {...DEFAULT_TEXT_LABEL, field: {name: 'blue', valueAccessor}}
+  ];
   t.deepEqual(nextState5.layers[0].config.textLabel, expected5, 'should add text label taro');
 
-  // add 1 more label
+  // // add 1 more label
   const nextState6 = reducer(
     nextState5,
     VisStateActions.layerTextLabelChange(nextState5.layers[0], 2, 'field', {
-      name: 'cat'
+      name: 'cat',
+      valueAccessor
     })
   );
   const expected6 = [
     expectedTextLabel1,
-    {...DEFAULT_TEXT_LABEL, field: {name: 'blue'}},
-    {...DEFAULT_TEXT_LABEL, field: {name: 'cat'}}
+    {...DEFAULT_TEXT_LABEL, field: {name: 'blue', valueAccessor}},
+    {...DEFAULT_TEXT_LABEL, field: {name: 'cat', valueAccessor}}
   ];
   t.deepEqual(nextState6.layers[0].config.textLabel, expected6, 'should add text label cat');
 
@@ -673,15 +842,20 @@ test('#visStateReducer -> LAYER_TEXT_LABEL_CHANGE', t => {
     nextState6,
     VisStateActions.layerTextLabelChange(nextState6.layers[0], 2, 'field', null)
   );
-  const expected7 = [expectedTextLabel1, {...DEFAULT_TEXT_LABEL, field: {name: 'blue'}}];
+  const expected7 = [
+    expectedTextLabel1,
+    {...DEFAULT_TEXT_LABEL, field: {name: 'blue', valueAccessor}}
+  ];
   t.deepEqual(nextState7.layers[0].config.textLabel, expected7, 'should remove text label cat');
 
   // remove label with all
   const nextState8 = reducer(
     nextState7,
-    VisStateActions.layerTextLabelChange(nextState7.layers[0], 'all', 'fields', [{name: 'blue'}])
+    VisStateActions.layerTextLabelChange(nextState7.layers[0], 'all', 'fields', [
+      {name: 'blue', valueAccessor}
+    ])
   );
-  const expected8 = [{...DEFAULT_TEXT_LABEL, field: {name: 'blue'}}];
+  const expected8 = [{...DEFAULT_TEXT_LABEL, field: {name: 'blue', valueAccessor}}];
   t.deepEqual(nextState8.layers[0].config.textLabel, expected8, 'should remove text label blue');
 
   t.end();
@@ -710,7 +884,7 @@ test('#visStateReducer -> UPDATE_LAYER_BLENDING', t => {
 });
 
 test('#visStateReducer -> REMOVE_FILTER', t => {
-  const initialState = StateWFilters.visState;
+  const initialState = CloneDeep(StateWFilters.visState);
   // filter[0]: 'time' testCsvData
   // filter[1]: 'RATE' testGeoJsonData
 
@@ -836,7 +1010,7 @@ test('#visStateReducer -> REMOVE_LAYER', t => {
       picked: true
     },
     splitMaps: [],
-    animationConfig: defaultAnimationConfig
+    animationConfig: DEFAULT_ANIMATION_CONFIG
   };
 
   const newReducer = reducer(oldState, VisStateActions.removeLayer(1));
@@ -853,7 +1027,7 @@ test('#visStateReducer -> REMOVE_LAYER', t => {
         picked: true
       },
       splitMaps: [],
-      animationConfig: defaultAnimationConfig
+      animationConfig: DEFAULT_ANIMATION_CONFIG
     },
     'should remove layer and layerData'
   );
@@ -862,12 +1036,84 @@ test('#visStateReducer -> REMOVE_LAYER', t => {
   t.end();
 });
 
-test('#visStateReducer -> UPDATE_VIS_DATA.1 -> No data', t => {
-  const oldState = {
-    datasets: {},
-    layers: [{name: 'a'}, {name: 'b'}],
-    layerData: [{data: 1}, {data: 2}]
+test('#visStateReducer -> DUPLICATE_LAYER', t => {
+  const oldState = CloneDeep(StateWFilesFiltersLayerColor.visState);
+  // layers: ['point-0', 'geojson-1', 'hexagon-2'],
+  const layerToCopy = serializeLayer(oldState.layers[0]);
+  t.equal(oldState.layers.length, 3, 'should have 3 layers to begin');
+  t.deepEqual(oldState.layerOrder, [2, 0, 1], 'should have 3 layers to begin');
+
+  const nextState = reducer(oldState, VisStateActions.duplicateLayer(0));
+  t.equal(nextState.layers.length, 4, 'should add 1 layer');
+  const layerCopied = serializeLayer(nextState.layers[3]);
+
+  const expectedLayer = {
+    ...layerToCopy,
+    id: layerCopied.id,
+    config: {
+      ...layerToCopy.config,
+      label: 'Copy of gps data'
+    }
   };
+
+  t.deepEqual(layerCopied, expectedLayer, 'should copy layer config correctly');
+  t.deepEqual(
+    nextState.layerData[3].data,
+    nextState.layerData[0].data,
+    'should copy layer data correctly'
+  );
+  t.deepEqual(
+    nextState.layerOrder,
+    [2, 3, 0, 1],
+    'should insert copied layer in front of older layer'
+  );
+
+  // copy again
+  const nextState1 = reducer(nextState, VisStateActions.duplicateLayer(0));
+  t.equal(nextState1.layers.length, 5, 'should add 1 layer');
+  const layerCopied1 = serializeLayer(nextState1.layers[4]);
+
+  const expectedLayer1 = {
+    ...layerToCopy,
+    id: layerCopied1.id,
+    config: {
+      ...layerToCopy.config,
+      label: 'Copy of gps data 1'
+    }
+  };
+  t.deepEqual(layerCopied1, expectedLayer1, 'should copy layer config correctly');
+  t.deepEqual(
+    nextState1.layerData[4].data,
+    nextState1.layerData[0].data,
+    'should copy layer data correctly'
+  );
+  t.deepEqual(
+    nextState1.layerOrder,
+    [2, 3, 4, 0, 1],
+    'should insert copied layer in front of older layer'
+  );
+
+  // copy again
+  const nextState2 = reducer(nextState1, VisStateActions.duplicateLayer(0));
+  t.equal(nextState2.layers.length, 6, 'should add 1 layer');
+  const layerCopied2 = serializeLayer(nextState2.layers[5]);
+
+  const expectedLayer2 = {
+    ...layerToCopy,
+    id: layerCopied2.id,
+    config: {
+      ...layerToCopy.config,
+      label: 'Copy of gps data 2'
+    }
+  };
+  t.deepEqual(layerCopied2, expectedLayer2, 'should copy layer config correctly');
+
+  // test remove
+  t.end();
+});
+
+test('#visStateReducer -> UPDATE_VIS_DATA.1 -> No data', t => {
+  const oldState = CloneDeep(InitialState).visState;
 
   t.deepEqual(
     reducer(oldState, VisStateActions.updateVisData([{info: null, data: null}])),
@@ -910,7 +1156,6 @@ test('#visStateReducer -> UPDATE_VIS_DATA.1 -> No data', t => {
   t.end();
 });
 
-/* eslint-disable max-statements */
 test('#visStateReducer -> UPDATE_VIS_DATA.2 -> to empty state', t => {
   const oldState = INITIAL_VIS_STATE;
 
@@ -919,12 +1164,11 @@ test('#visStateReducer -> UPDATE_VIS_DATA.2 -> to empty state', t => {
     VisStateActions.updateVisData([
       {
         data: mockRawData,
-        info: {id: 'smoothie', label: 'exciting dataset'}
+        info: {id: 'smoothie', label: 'exciting dataset'},
+        metadata: {album: 'taro_and_blue'}
       }
     ])
   );
-
-  const newStateLayers = CloneDeep(newState.layers);
 
   const expectedDatasets = {
     smoothie: {
@@ -983,9 +1227,14 @@ test('#visStateReducer -> UPDATE_VIS_DATA.2 -> to empty state', t => {
           },
           suffix: ['lat', 'lng']
         }
-      ]
+      ],
+      metadata: {id: 'smoothie', label: 'exciting dataset', album: 'taro_and_blue'}
     }
   };
+
+  t.deepEqual(Object.keys(newState.datasets), ['smoothie'], 'should save data to smoothie');
+
+  cmpDatasets(t, expectedDatasets, newState.datasets);
 
   const expectedArcLayer = new ArcLayer({
     dataId: 'smoothie',
@@ -1005,7 +1254,17 @@ test('#visStateReducer -> UPDATE_VIS_DATA.2 -> to empty state', t => {
       lat0: {fieldIdx: 0, value: 'start_point_lat'},
       lng0: {fieldIdx: 1, value: 'start_point_lng'},
       lat1: {fieldIdx: 2, value: 'end_point_lat'},
-      lng1: {fieldIdx: 3, value: 'end_point_lng'}
+      lng1: {fieldIdx: 3, value: 'end_point_lng'},
+      alt0: {
+        value: null,
+        fieldIdx: -1,
+        optional: true
+      },
+      alt1: {
+        value: null,
+        fieldIdx: -1,
+        optional: true
+      }
     }
   });
 
@@ -1044,9 +1303,9 @@ test('#visStateReducer -> UPDATE_VIS_DATA.2 -> to empty state', t => {
     expectedArcLayer,
     expectedLineLayer
   ];
-  t.deepEqual(Object.keys(newState.datasets), ['smoothie'], 'should save data to smoothie');
 
-  cmpDatasets(t, expectedDatasets, newState.datasets);
+  const newStateLayers = CloneDeep(newState.layers);
+
   cmpLayers(t, expectedLayers, newStateLayers);
 
   t.equal(newState.layerData.length, expectedLayers.length, 'should calculate layerdata');
@@ -1107,6 +1366,10 @@ test('#visStateReducer -> UPDATE_VIS_DATA.3 -> merge w/ existing state', t => {
       allData: [['something'], ['something_else']]
     },
     smoothie: {
+      metadata: {
+        id: 'smoothie',
+        label: 'smoothie and milkshake'
+      },
       fields: expectedFields,
       allData: mockRawData.rows,
       color: 'donnot test me',
@@ -1225,6 +1488,10 @@ test('#visStateReducer -> UPDATE_VIS_DATA.4.Geojson -> geojson data', t => {
   const initialState = reducer(initialVisState, VisStateActions.updateVisData(payload));
 
   const expectedDatasets = {
+    metadata: {
+      id: 'milkshake',
+      label: 'king milkshake'
+    },
     id: 'milkshake',
     label: 'king milkshake',
     color: 'donnot test me',
@@ -1232,7 +1499,7 @@ test('#visStateReducer -> UPDATE_VIS_DATA.4.Geojson -> geojson data', t => {
     filteredIndex: rows.map((_, i) => i),
     filteredIndexForDomain: rows.map((_, i) => i),
     allIndexes: rows.map((_, i) => i),
-    fields: fields.map(f => ({...f, id: f.name})),
+    fields: fields.map((f, i) => ({...f, valueAccessor: values => values[i]})),
     fieldPairs: [],
     gpuFilter: {
       filterRange: [
@@ -1273,7 +1540,7 @@ test('#visStateReducer -> UPDATE_VIS_DATA.4.Geojson -> geojson data', t => {
   const expectedLayerData = {
     data: geojsonData.features.map((f, i) => ({
       ...f,
-      properties: {...f.properties, index: i}
+      properties: {...f.properties, TRIPS: f.properties.TRIPS || null, index: i}
     }))
   };
 
@@ -1291,7 +1558,7 @@ test('#visStateReducer -> UPDATE_VIS_DATA.4.Geojson -> geojson data', t => {
   t.deepEqual(
     initialState.layerData[0].data,
     expectedLayerData.data,
-    'should save geojson to datasets'
+    'should save geojson to layer data'
   );
 
   t.end();
@@ -1395,6 +1662,7 @@ test('#visStateReducer -> UPDATE_VIS_DATA -> mergeFilters', t => {
 
   const expectedFilter = {
     ...expectedFilterProps,
+    animationWindow: 'free',
     dataId: ['smoothie'],
     fieldIdx: [0],
     id: '38chejr',
@@ -1427,6 +1695,10 @@ test('#visStateReducer -> UPDATE_VIS_DATA -> mergeFilters', t => {
 
   const expectedDatasets = {
     smoothie: {
+      metadata: {
+        id: 'smoothie',
+        label: 'smoothie and milkshake'
+      },
       fields: expectedFields.map(f =>
         f.name === mockFilter.name
           ? {
@@ -1499,7 +1771,13 @@ test('#visStateReducer -> UPDATE_VIS_DATA -> mergeFilters', t => {
           },
           suffix: ['lat', 'lng']
         }
-      ]
+      ],
+      changedFilters: {
+        dynamicDomain: {'38chejr': 'added'},
+        fixedDomain: null,
+        cpu: null,
+        gpu: {'38chejr': 'added'}
+      }
     }
   };
 
@@ -1509,22 +1787,16 @@ test('#visStateReducer -> UPDATE_VIS_DATA -> mergeFilters', t => {
     datasets: expectedDatasets
   };
 
-  cmpFilters(t, expectedState.filters, newState.filters);
-
-  t.deepEqual(
-    newState.filterToBeMerged,
-    expectedState.filterToBeMerged,
-    'should saved unmerged filter to filterToBeMerged'
-  );
+  // cmpFilters(t, expectedState.filters, newState.filters);
+  //
+  // t.deepEqual(
+  //   newState.filterToBeMerged,
+  //   expectedState.filterToBeMerged,
+  //   'should saved unmerged filter to filterToBeMerged'
+  // );
 
   cmpDatasets(t, expectedState.datasets, newState.datasets);
 
-  // filteredIndex should be shallow equal
-  t.equal(
-    newState.datasets.smoothie.filteredIndex,
-    newState.datasets.smoothie.allIndexes,
-    'filteredIndex should be shallow equal'
-  );
   t.end();
 });
 
@@ -1670,6 +1942,7 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
     value: null,
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     plotType: 'histogram',
     yAxis: null,
     speed: 1,
@@ -1699,6 +1972,7 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
     value: [],
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     fieldType: 'date',
     plotType: 'histogram',
     yAxis: null,
@@ -1725,6 +1999,10 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
 
   // test dataset
   const expectedDataset = {
+    metadata: {
+      id: 'smoothie',
+      label: 'queen smoothie'
+    },
     id: 'smoothie',
     label: 'queen smoothie',
     color: 'donnot test me',
@@ -1772,7 +2050,8 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
         },
         suffix: ['lat', 'lng']
       }
-    ]
+    ],
+    changedFilters: {dynamicDomain: null, fixedDomain: null, cpu: null, gpu: null}
   };
 
   cmpDataset(t, expectedDataset, stateWithFilterName.datasets.smoothie);
@@ -1792,7 +2071,6 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
   cmpFilters(t, expectedFilterWValue, stateWithFilterValue.filters[0]);
 
   const updatedFilterWValue = stateWithFilterValue.filters[0];
-
   const expectedFilteredDataset = {
     ...expectedDataset,
     filterRecord: {
@@ -1803,7 +2081,13 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
     },
     allData,
     filteredIndex: [17, 18, 19, 20, 21, 22],
-    filteredIndexForDomain: [17, 18, 19, 20, 21, 22]
+    filteredIndexForDomain: [17, 18, 19, 20, 21, 22],
+    changedFilters: {
+      dynamicDomain: {[updatedFilterWValue.id]: 'added'},
+      fixedDomain: null,
+      cpu: {[updatedFilterWValue.id]: 'added'},
+      gpu: null
+    }
   };
 
   cmpDataset(t, expectedFilteredDataset, stateWithFilterValue.datasets.smoothie);
@@ -1831,8 +2115,25 @@ test('#visStateReducer -> setFilter.dynamicDomain & cpu', t => {
   t.end();
 });
 
+test('#visStateReducer -> RENAME_DATASET', t => {
+  const initialState = StateWTripGeojson.visState;
+
+  t.equal(
+    initialState.datasets[tripDataInfo.id].label,
+    tripDataInfo.label,
+    'Initial label as expected'
+  );
+
+  const newLabel = 'New label!!!11';
+  const updated = reducer(initialState, VisStateActions.renameDataset(tripDataInfo.id, newLabel));
+
+  t.equal(updated.datasets[tripDataInfo.id].label, newLabel, 'Updated label as expected');
+
+  t.end();
+});
+
 test('#visStateReducer -> SET_FILTER.name', t => {
-  const oldState = StateWFilters.visState;
+  const oldState = CloneDeep(StateWFilters.visState);
   const oldFilter0 = oldState.filters[0];
   // change filter name from RATE to ZIP_CODE
   const updated = reducer(oldState, VisStateActions.setFilter(1, 'name', 'ZIP_CODE', 0));
@@ -1845,6 +2146,7 @@ test('#visStateReducer -> SET_FILTER.name', t => {
     fixedDomain: false,
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     speed: 1,
     name: ['ZIP_CODE'],
     type: 'range',
@@ -1869,7 +2171,7 @@ test('#visStateReducer -> SET_FILTER.name', t => {
 });
 
 test('#visStateReducer -> SET_FILTER.dataId', t => {
-  const oldState = StateWFilters.visState;
+  const oldState = CloneDeep(StateWFilters.visState);
   let newState = reducer(oldState, VisStateActions.setFilter(1, 'dataId', testCsvDataId));
 
   let newFilter = newState.filters[1];
@@ -1899,7 +2201,7 @@ test('#visStateReducer -> SET_FILTER.dataId', t => {
   t.end();
 });
 
-test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
+function testSetFilterDynamicDomainGPU(t, setFilter) {
   const {fields, rows} = processGeojson(CloneDeep(geojsonData));
   const payload = [
     {
@@ -1918,10 +2220,7 @@ test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
   const stateWithFilter = reducer(initialState, VisStateActions.addFilter('milkshake'));
 
   // set filter 'name'
-  const stateWithFilterName = reducer(
-    stateWithFilter,
-    VisStateActions.setFilter(0, 'name', 'TRIPS')
-  );
+  const stateWithFilterName = reducer(stateWithFilter, setFilter(0, 'name', 'TRIPS'));
 
   const expectedFilterWName = {
     dataId: ['milkshake'],
@@ -1938,6 +2237,7 @@ test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
     histogram: [],
     enlargedHistogram: [],
     isAnimating: false,
+    animationWindow: 'free',
     fieldType: 'integer',
     typeOptions: ['range'],
     plotType: 'histogram',
@@ -1952,11 +2252,8 @@ test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
   cmpFilters(t, expectedFilterWName, stateWithFilterName.filters[0]);
 
   // set filter value
-  const stateWithFilterValue = reducer(
-    stateWithFilterName,
-    VisStateActions.setFilter(0, 'value', [8, 20])
-  );
-
+  const stateWithFilterValue = reducer(stateWithFilterName, setFilter(0, 'value', [8, 20]));
+  const filterId = stateWithFilterName.filters[0].id;
   const expectedFilterWValue = {
     ...expectedFilterWName,
     value: [8, 20]
@@ -1970,15 +2267,17 @@ test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
 
     // receive Vis Data will add id to fields
     // filter will add filterProps to fields
-    fields: geojsonFields.map(f =>
-      f.name === 'TRIPS'
-        ? {
-            ...f,
-            id: f.name,
-            filterProps: geoJsonTripFilterProps
-          }
-        : {...f, id: f.name}
-    ),
+    fields: geojsonFields.map((f, i) => ({
+      ...f,
+      valueAccessor: maybeToDate.bind(
+        null,
+        // is time
+        f.type === ALL_FIELD_TYPES.timestamp,
+        i,
+        f.format
+      ),
+      ...(f.name === 'TRIPS' ? {filterProps: geoJsonTripFilterProps} : {})
+    })),
     gpuFilter: {
       filterRange: [
         [4, 16],
@@ -2005,28 +2304,48 @@ test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
     },
     filteredIndex: geojsonData.features.map((_, i) => i),
     filteredIndexForDomain: [0, 2],
-    allIndexes: geojsonData.features.map((_, i) => i)
+    allIndexes: geojsonData.features.map((_, i) => i),
+    changedFilters: {
+      dynamicDomain: {[filterId]: 'value_changed'},
+      fixedDomain: null,
+      cpu: null,
+      gpu: {[filterId]: 'value_changed'}
+    }
   };
 
   const actualTripField = stateWithFilterValue.datasets.milkshake.fields[4];
   const expectedField = expectedFilteredDataset.fields[4];
 
-  t.deepEqual(
-    Object.keys(actualTripField).sort(),
-    Object.keys(expectedField).sort(),
-    'trip field keys should be same'
-  );
-  Object.keys(actualTripField).forEach(k => {
-    t.deepEqual(actualTripField[k], expectedField[k], `trip field ${k} should be same`);
-  });
+  cmpField(t, expectedField, actualTripField, 'trip field should be same');
   cmpDataset(t, expectedFilteredDataset, stateWithFilterValue.datasets.milkshake);
+}
+test('#visStateReducer -> setFilter.dynamicDomain & gpu', t => {
+  testSetFilterDynamicDomainGPU(t, VisStateActions.setFilter);
+  t.end();
+});
+
+test('#visStateReducer -> SET_FILTER_ANIMATION_TIME', t => {
+  testSetFilterDynamicDomainGPU(t, VisStateActions.setFilterAnimationTime);
+  t.end();
+});
+
+test('#visStateReducer -> SET_FILTER_ANIMATION_WINDOW', t => {
+  const initialState = CloneDeep(StateWFilters.visState);
+  const nextState = reducer(
+    initialState,
+    VisStateActions.setFilterAnimationWindow({
+      id: initialState.filters[0].id,
+      animationWindow: 'incremental'
+    })
+  );
+
+  t.equal(nextState.filters[0].animationWindow, 'incremental', 'should update ANIMATIONWINDOW');
 
   t.end();
 });
-/* eslint-enable max-statements */
 
 test('#visStateReducer -> UPDATE_FILTER_ANIMATION_SPEED', t => {
-  const initialState = StateWFilters.visState;
+  const initialState = CloneDeep(StateWFilters.visState);
 
   const nextState = reducer(initialState, VisStateActions.updateFilterAnimationSpeed(0, 4));
 
@@ -2077,11 +2396,13 @@ test('#visStateReducer -> setFilter.fixedDomain & DynamicDomain & gpu & cpu', t 
     }
   ]);
 
+  const filterId = stateWidthTsFilter.filters[0].id;
+
   const expectedFilterTs = {
     dataId: ['smoothie'],
     freeze: true,
     fixedDomain: true,
-    id: 'dont test me',
+    id: filterId,
     name: ['gps_data.utc_timestamp'],
     type: 'timeRange',
     fieldIdx: [0],
@@ -2122,9 +2443,11 @@ test('#visStateReducer -> setFilter.fixedDomain & DynamicDomain & gpu & cpu', t 
     enlargedHistogram: [],
     enlarged: true,
     isAnimating: false,
+    animationWindow: 'free',
     fieldType: 'timestamp',
     gpu: true,
-    gpuChannel: [0]
+    gpuChannel: [0],
+    defaultTimeFormat: 'L LTS'
   };
 
   cmpFilters(t, expectedFilterTs, stateWidthTsFilter.filters[0]);
@@ -2147,7 +2470,8 @@ test('#visStateReducer -> setFilter.fixedDomain & DynamicDomain & gpu & cpu', t 
               enlarged: true,
               fixedDomain: true,
               value: [1474070995000, 1474072208000],
-              gpu: true
+              gpu: true,
+              defaultTimeFormat: 'L LTS'
             }
           }
         : f
@@ -2178,7 +2502,13 @@ test('#visStateReducer -> setFilter.fixedDomain & DynamicDomain & gpu & cpu', t 
     },
     // copy everything
     filteredIndex: datasetSmoothie.allData.map((d, i) => i),
-    filteredIndexForDomain: datasetSmoothie.allData.map((d, i) => i)
+    filteredIndexForDomain: datasetSmoothie.allData.map((d, i) => i),
+    changedFilters: {
+      dynamicDomain: null,
+      fixedDomain: {[filterId]: 'value_changed'},
+      cpu: null,
+      gpu: {[filterId]: 'value_changed'}
+    }
   };
 
   // check filter by ts
@@ -2200,7 +2530,7 @@ test('#visStateReducer -> setFilter.fixedDomain & DynamicDomain & gpu & cpu', t 
       payload: [1, 'value', ['2016-09-24', '2016-10-10']]
     }
   ]);
-
+  const filterId1 = stateWidthTsAndNameFilter.filters[1].id;
   const expectedFilteredDataset = {
     ...stateWidthTsFilter.datasets.smoothie,
     fields: stateWidthTsFilter.datasets.smoothie.fields.map(f =>
@@ -2242,7 +2572,13 @@ test('#visStateReducer -> setFilter.fixedDomain & DynamicDomain & gpu & cpu', t 
       gpu: [stateWidthTsAndNameFilter.filters[0]]
     },
     filteredIndex: [7, 8, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22],
-    filteredIndexForDomain: [7, 8, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22]
+    filteredIndexForDomain: [7, 8, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22],
+    changedFilters: {
+      dynamicDomain: {[filterId1]: 'added'},
+      fixedDomain: null,
+      cpu: {[filterId1]: 'added'},
+      gpu: null
+    }
   };
 
   cmpDataset(t, expectedFilteredDataset, stateWidthTsAndNameFilter.datasets.smoothie);
@@ -2277,7 +2613,7 @@ test('#visStateReducer -> SET_FILTER_PLOT', t => {
   );
 
   // find id which is an integer field
-  const yAxisField = stateWithFilterName.datasets.smoothie.fields.find(f => f.id === 'id');
+  const yAxisField = stateWithFilterName.datasets.smoothie.fields.find(f => f.name === 'id');
 
   // set filterPlot yAxis
   const stateWithFilterPlot = reducer(
@@ -2300,10 +2636,10 @@ test('#visStateReducer -> SET_FILTER_PLOT', t => {
     yAxis: {
       type: 'integer',
       name: 'id',
-      id: 'id',
       format: '',
-      tableFieldIndex: 7,
-      analyzerType: 'INT'
+      fieldIdx: 6,
+      analyzerType: 'INT',
+      valueAccessor: values => values[6]
     },
     interval: null,
     lineChart: {
@@ -2357,9 +2693,11 @@ test('#visStateReducer -> SET_FILTER_PLOT', t => {
     enlargedHistogram: [],
     enlarged: true,
     isAnimating: false,
+    animationWindow: 'free',
     fieldType: 'timestamp',
     gpu: true,
-    gpuChannel: [0]
+    gpuChannel: [0],
+    defaultTimeFormat: 'L LTS'
   };
 
   // test filter
@@ -2368,7 +2706,7 @@ test('#visStateReducer -> SET_FILTER_PLOT', t => {
 });
 
 test('#visStateReducer -> TOGGLE_FILTER_ANIMATION', t => {
-  const initialState = StateWFilters.visState;
+  const initialState = CloneDeep(StateWFilters.visState);
 
   const nextState = reducer(initialState, VisStateActions.toggleFilterAnimation(0));
   t.equal(nextState.filters[0].isAnimating, true, 'should set filter to isAnimating: true');
@@ -2377,7 +2715,7 @@ test('#visStateReducer -> TOGGLE_FILTER_ANIMATION', t => {
 });
 
 test('#visStateReducer -> ENLARGE_FILTER', t => {
-  const initialState = StateWFilters.visState;
+  const initialState = CloneDeep(StateWFilters.visState);
 
   const nextState = reducer(initialState, VisStateActions.enlargeFilter(0));
 
@@ -2391,7 +2729,7 @@ test('#visStateReducer -> ENLARGE_FILTER', t => {
 });
 
 test('#visStateReducer -> REMOVE_DATASET', t => {
-  const initialState = StateWFilters.visState;
+  const initialState = CloneDeep(StateWFilters.visState);
   const nextState = reducer(initialState, VisStateActions.removeDataset('not_me'));
 
   t.equal(initialState, nextState, 'should return state if datasetKey doesnot exist');
@@ -2399,7 +2737,7 @@ test('#visStateReducer -> REMOVE_DATASET', t => {
 });
 
 test('#visStateReducer -> REMOVE_DATASET w filter and layer', t => {
-  const oldState = StateWFilters.visState;
+  const oldState = CloneDeep(StateWFilters.visState);
 
   const expectedState = {
     layers: [oldState.layers[1]],
@@ -2416,13 +2754,37 @@ test('#visStateReducer -> REMOVE_DATASET w filter and layer', t => {
         enabled: true,
         iconComponent: oldState.interactionConfig.tooltip.iconComponent,
         config: {
+          compareMode: false,
+          compareType: 'absolute',
           fieldsToShow: {
-            [testGeoJsonDataId]: ['OBJECTID', 'ZIP_CODE', 'ID', 'TRIPS', 'RATE']
+            [testGeoJsonDataId]: [
+              {
+                name: 'OBJECTID',
+                format: null
+              },
+              {
+                name: 'ZIP_CODE',
+                format: null
+              },
+              {
+                name: 'ID',
+                format: null
+              },
+              {
+                name: 'TRIPS',
+                format: null
+              },
+              {
+                name: 'RATE',
+                format: null
+              }
+            ]
           }
         }
       },
       brush: oldState.interactionConfig.brush,
-      coordinate: oldState.interactionConfig.coordinate
+      coordinate: oldState.interactionConfig.coordinate,
+      geocoder: oldState.interactionConfig.geocoder
     },
     editingDataset: oldState.editingDataset,
     layerBlending: oldState.layerBlending,
@@ -2432,16 +2794,22 @@ test('#visStateReducer -> REMOVE_DATASET w filter and layer', t => {
     splitMaps: oldState.splitMaps,
     layerClasses: oldState.layerClasses,
     animationConfig: oldState.animationConfig,
-    initialState: [],
+    initialState: oldState.initialState,
     layerToBeMerged: [],
     filterToBeMerged: [],
+    interactionToBeMerged: undefined,
     splitMapsToBeMerged: [],
-    interactionToBeMerged: [],
     editor: oldState.editor,
     mapInfo: {
       title: '',
       description: ''
-    }
+    },
+    fileLoading: oldState.fileLoading,
+    fileLoadingProgress: oldState.fileLoadingProgress,
+    loaders: oldState.loaders,
+    loadOptions: oldState.loadOptions,
+    mergers: oldState.mergers,
+    schema: oldState.schema
   };
 
   const newReducer = reducer(oldState, VisStateActions.removeDataset(testCsvDataId));
@@ -2518,7 +2886,7 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
         }
       }
     ],
-    animationConfig: defaultAnimationConfig
+    animationConfig: DEFAULT_ANIMATION_CONFIG
   };
 
   const newReducer = reducer(oldState, VisStateActions.removeLayer(1));
@@ -2546,7 +2914,7 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
           }
         }
       ],
-      animationConfig: defaultAnimationConfig
+      animationConfig: DEFAULT_ANIMATION_CONFIG
     },
     'should remove layer and layerData in split mode'
   );
@@ -2554,7 +2922,7 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
   t.end();
 });
 
-test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
+test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER. set animation domain', t => {
   const layer1 = new PointLayer({id: 'a'});
   const layer2 = new PointLayer({id: 'b'});
   const layer3 = new TripLayer({id: 't1', isVisible: true});
@@ -2579,7 +2947,8 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
   const newReducer = reducer(oldState, VisStateActions.removeLayer(2));
   const expectedAnimationConfig = {
     domain: [1568502810000, 1568503060000],
-    currentTime: 1568502970000
+    currentTime: 1568502970000,
+    defaultTimeFormat: 'L LTS'
   };
 
   t.deepEqual(
@@ -2591,7 +2960,8 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
   const newReducer2 = reducer(oldState, VisStateActions.removeLayer(3));
   const expectedAnimationConfig2 = {
     domain: [1568502710000, 1568502960000],
-    currentTime: 1568502710000
+    currentTime: 1568502710000,
+    defaultTimeFormat: 'L LTS'
   };
   t.deepEqual(
     newReducer2.animationConfig,
@@ -2602,7 +2972,11 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_LAYER', t => {
   const newReducer3 = reducer(newReducer2, VisStateActions.removeLayer(2));
   t.deepEqual(
     newReducer3.animationConfig,
-    defaultAnimationConfig,
+    {
+      domain: null,
+      currentTime: 1568502710000,
+      defaultTimeFormat: null
+    },
     'remove last animation layer and set animation config to default'
   );
 
@@ -2627,19 +3001,37 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_DATASET', t => {
         enabled: true,
         iconComponent: oldState.interactionConfig.tooltip.iconComponent,
         config: {
+          compareMode: false,
+          compareType: 'absolute',
           fieldsToShow: {
             [testCsvDataId]: [
-              'gps_data.utc_timestamp',
-              'gps_data.types',
-              'epoch',
-              'has_result',
-              'id'
+              {
+                name: 'gps_data.utc_timestamp',
+                format: null
+              },
+              {
+                name: 'gps_data.types',
+                format: null
+              },
+              {
+                name: 'epoch',
+                format: null
+              },
+              {
+                name: 'has_result',
+                format: null
+              },
+              {
+                name: 'id',
+                format: null
+              }
             ]
           }
         }
       },
       brush: oldState.interactionConfig.brush,
-      coordinate: oldState.interactionConfig.coordinate
+      coordinate: oldState.interactionConfig.coordinate,
+      geocoder: oldState.interactionConfig.geocoder
     },
     splitMaps: [{layers: {'point-0': false}}, {layers: {'point-0': true}}],
     editingDataset: oldState.editingDataset,
@@ -2648,17 +3040,23 @@ test('#visStateReducer -> SPLIT_MAP: REMOVE_DATASET', t => {
     clicked: oldState.clicked,
     mousePos: oldState.mousePos,
     layerClasses: oldState.layerClasses,
-    animationConfig: defaultAnimationConfig,
-    initialState: [],
+    animationConfig: DEFAULT_ANIMATION_CONFIG,
+    initialState: oldState.initialState,
     layerToBeMerged: [],
     filterToBeMerged: [],
+    interactionToBeMerged: undefined,
     splitMapsToBeMerged: [],
-    interactionToBeMerged: [],
     editor: oldState.editor,
     mapInfo: {
       title: '',
       description: ''
-    }
+    },
+    fileLoading: oldState.fileLoading,
+    fileLoadingProgress: oldState.fileLoadingProgress,
+    loaders: oldState.loaders,
+    loadOptions: oldState.loadOptions,
+    schema: oldState.schema,
+    mergers: oldState.mergers
   };
 
   const newReducer = reducer(oldState, VisStateActions.removeDataset(testGeoJsonDataId));
@@ -2814,20 +3212,27 @@ test('#visStateReducer -> SPLIT_MAP: HIDE LAYER', t => {
   t.end();
 });
 
-test('#visStateReducer -> UPDATE_ANIMATION_TIME', t => {
-  const initialState = StateWTripGeojson;
-  const newState = reducer(initialState, VisStateActions.updateAnimationTime(1000));
+test('#visStateReducer -> SET_LAYER_ANIMATION_TIME', t => {
+  const initialState = StateWTripGeojson.visState;
+  const newState = reducer(initialState, VisStateActions.setLayerAnimationTime(1000));
 
   t.equal(newState.animationConfig.currentTime, 1000, 'should update animation time');
   t.end();
 });
 
 test('#visStateReducer -> UPDATE_LAYER_ANIMATION_SPEED', t => {
-  const initialState = StateWTripGeojson;
+  const initialState = StateWTripGeojson.visState;
   const newState = reducer(initialState, VisStateActions.updateLayerAnimationSpeed(1.23));
 
   t.equal(newState.animationConfig.speed, 1.23, 'should update animation speed');
 
+  t.end();
+});
+
+test('#visStateReducer -> TOGGLE_LAYER_ANIMATION', t => {
+  const initialState = StateWTripGeojson.visState;
+  const newState = reducer(initialState, VisStateActions.toggleLayerAnimation());
+  t.equal(newState.animationConfig.isAnimating, true, 'should update animationConfig');
   t.end();
 });
 
@@ -2844,6 +3249,10 @@ test('#visStateReducer -> INTERACTION_CONFIG_CHANGE', t => {
     brush: brushConfig,
     tooltip: {
       ...defaultInteractionConfig.tooltip,
+      enabled: false
+    },
+    geocoder: {
+      ...defaultInteractionConfig.geocoder,
       enabled: false
     }
   };
@@ -3005,7 +3414,6 @@ test('#visStateReducer -> LAYER_COLOR_UI_CHANGE. show dropdown', t => {
   t.end();
 });
 
-// eslint-disable-next-line max-statements
 test('#visStateReducer -> LAYER_COLOR_UI_CHANGE. colorRangeConfig.step', t => {
   const initialState = CloneDeep(StateWFilesFiltersLayerColor.visState);
   const pointLayer = initialState.layers[0];
@@ -3492,7 +3900,6 @@ test('#visStateReducer -> POLYGON: Add/Remove new polygon feature', t => {
   t.end();
 });
 
-/* eslint-disable max-statements */
 test('#visStateReducer -> POLYGON: Create polygon filter', t => {
   const state = {
     ...INITIAL_VIS_STATE
@@ -3505,28 +3912,28 @@ test('#visStateReducer -> POLYGON: Create polygon filter', t => {
           {
             name: 'start_point_lat',
             format: '',
-            tableFieldIndex: 1,
+            fieldIdx: 0,
             type: 'real',
             analyzerType: 'FLOAT'
           },
           {
             name: 'start_point_lng',
             format: '',
-            tableFieldIndex: 2,
+            fieldIdx: 1,
             type: 'real',
             analyzerType: 'FLOAT'
           },
           {
             name: 'end_point_lat',
             format: '',
-            tableFieldIndex: 3,
+            fieldIdx: 2,
             type: 'real',
             analyzerType: 'FLOAT'
           },
           {
             name: 'end_point_lng',
             format: '',
-            tableFieldIndex: 4,
+            fieldIdx: 3,
             type: 'real',
             analyzerType: 'FLOAT'
           }
@@ -3570,6 +3977,7 @@ test('#visStateReducer -> POLYGON: Create polygon filter', t => {
     fixedDomain: true,
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     speed: 1,
     name: [],
     type: 'polygon',
@@ -3655,28 +4063,106 @@ test('#visStateReducer -> POLYGON: Create polygon filter', t => {
 
   t.end();
 });
-/* eslint-enable max-statements */
 
 test('#visStateReducer -> POLYGON: Toggle filter feature', t => {
   const state = {
-    ...INITIAL_VIS_STATE,
-    datasets: {
-      puppy: {
-        data: mockPolygonData.data,
-        allData: mockPolygonData.data,
-        fields: mockPolygonData.fields
-      },
-      cat: {
-        data: mockPolygonData.data,
-        allData: mockPolygonData.data,
-        fields: mockPolygonData.fields
-      }
-    }
+    ...INITIAL_VIS_STATE
   };
 
-  let newReducer = reducer(state, VisStateActions.addLayer());
+  const datasets = [
+    {
+      data: {
+        fields: [
+          {
+            name: 'start_point_lat',
+            format: '',
+            fieldIdx: 0,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'start_point_lng',
+            format: '',
+            fieldIdx: 1,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lat',
+            format: '',
+            fieldIdx: 2,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lng',
+            format: '',
+            fieldIdx: 3,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          }
+        ],
+        rows: mockPolygonData.data
+      },
+      info: {
+        label: 'test.csv',
+        size: 144,
+        id: 'puppy'
+      }
+    },
+    {
+      data: {
+        fields: [
+          {
+            name: 'start_point_lat',
+            format: '',
+            fieldIdx: 0,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'start_point_lng',
+            format: '',
+            fieldIdx: 1,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lat',
+            format: '',
+            fieldIdx: 2,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lng',
+            format: '',
+            fieldIdx: 3,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          }
+        ],
+        rows: mockPolygonData.data
+      },
+      info: {
+        label: 'test.csv',
+        size: 144,
+        id: 'cat'
+      }
+    }
+  ];
 
-  t.equal(newReducer.layers.length, 1, 'Should have created a new layer');
+  const options = {
+    centerMap: true,
+    keepExistingConfig: false
+  };
+
+  // visStateUpdateVisDataUpdater - creates 4 layers
+  let newReducer = reducer(state, VisStateActions.updateVisData(datasets, options, {}));
+
+  newReducer = reducer(newReducer, VisStateActions.addLayer());
+
+  t.equal(newReducer.layers.length, 9, 'Should have created a new layer');
 
   // add new polygon feature
   newReducer = reducer(newReducer, VisStateActions.setFeatures([mockPolygonFeature]));
@@ -3699,6 +4185,7 @@ test('#visStateReducer -> POLYGON: Toggle filter feature', t => {
     fixedDomain: true,
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     speed: 1,
     name: [],
     type: 'polygon',
@@ -3740,21 +4227,103 @@ test('#visStateReducer -> POLYGON: Toggle filter feature', t => {
 
 test('#visStateReducer -> POLYGON: delete polygon filter', t => {
   const state = {
-    ...INITIAL_VIS_STATE,
-    datasets: {
-      puppy: {
-        data: mockData.data,
-        allData: mockData.data,
-        fields: mockData.fields
-      }
-    },
-    layers: [],
-    layerData: []
+    ...INITIAL_VIS_STATE
   };
 
-  let newReducer = reducer(state, VisStateActions.addLayer());
+  const datasets = [
+    {
+      data: {
+        fields: [
+          {
+            name: 'start_point_lat',
+            format: '',
+            fieldIdx: 0,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'start_point_lng',
+            format: '',
+            fieldIdx: 1,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lat',
+            format: '',
+            fieldIdx: 2,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lng',
+            format: '',
+            fieldIdx: 3,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          }
+        ],
+        rows: mockPolygonData.data
+      },
+      info: {
+        label: 'test.csv',
+        size: 144,
+        id: 'puppy'
+      }
+    },
+    {
+      data: {
+        fields: [
+          {
+            name: 'start_point_lat',
+            format: '',
+            fieldIdx: 0,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'start_point_lng',
+            format: '',
+            fieldIdx: 1,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lat',
+            format: '',
+            fieldIdx: 2,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          },
+          {
+            name: 'end_point_lng',
+            format: '',
+            fieldIdx: 3,
+            type: 'real',
+            analyzerType: 'FLOAT'
+          }
+        ],
+        rows: mockPolygonData.data
+      },
+      info: {
+        label: 'test.csv',
+        size: 144,
+        id: 'cat'
+      }
+    }
+  ];
 
-  t.equal(newReducer.layers.length, 1, 'Should have created a new layer');
+  const options = {
+    centerMap: true,
+    keepExistingConfig: false
+  };
+
+  // visStateUpdateVisDataUpdater - creates 4 layers
+  let newReducer = reducer(state, VisStateActions.updateVisData(datasets, options, {}));
+
+  newReducer = reducer(newReducer, VisStateActions.addLayer());
+
+  t.equal(newReducer.layers.length, 9, 'Should have created a new layer');
 
   // add new polygon feature
   newReducer = reducer(newReducer, VisStateActions.setFeatures([mockPolygonFeature]));
@@ -3783,6 +4352,27 @@ test('#visStateReducer -> POLYGON: delete polygon filter', t => {
   // deleting the filter will also delete the feature
   t.deepEqual(newReducer.editor.features.length, 0, 'Should have removed the feature');
 
+  t.end();
+});
+
+test('#visStateReducer -> POLYGON: setPolygonFilterLayer: H3', t => {
+  const initialState = CloneDeep(StateWH3Layer).visState;
+  const newState = reducer(
+    initialState,
+    VisStateActions.setPolygonFilterLayer(initialState.layers[0], mockPolygonFeature2)
+  );
+
+  const expectedFilteredIndex = [1, 3, 5, 8];
+  t.deepEqual(
+    newState.datasets['190vdll3di'].filteredIndex,
+    expectedFilteredIndex,
+    'should filter data based on h3 layer'
+  );
+  t.deepEqual(
+    newState.layerData[0].data.map(d => d.index),
+    [1, 3, 5, 8],
+    'should filter layer data'
+  );
   t.end();
 });
 
@@ -3828,7 +4418,7 @@ test('#visStateReducer -> APPLY_CPU_FILTER. no filter', t => {
   t.end();
 });
 
-test('#visStateReducer -> APPLY_CPU_FILTER. has gpu filter', t => {
+test('#visStateReducer -> APPLY_CPU_FILTER has gpu filter', t => {
   const initialState = CloneDeep(StateWFilters.visState);
   // dataset has gpu filter
   const dataId = testCsvDataId;
@@ -3856,12 +4446,12 @@ test('#visStateReducer -> APPLY_CPU_FILTER. has gpu filter', t => {
   t.equal(
     nextState.datasets[dataId].filteredIdxCPU,
     nextState2.datasets[dataId].filteredIdxCPU,
-    'should directly copy filter result when filter hasnot changed'
+    'should directly copy filter result when filter has not changed'
   );
   t.end();
 });
 
-test('#visStateReducer -> APPLY_CPU_FILTER. has cpu filter', t => {
+test('#visStateReducer -> APPLY_CPU_FILTER has cpu filter', t => {
   const initialState = CloneDeep(StateWFilters.visState);
   // dataset has gpu filter
   const dataId = testGeoJsonDataId;
@@ -3888,7 +4478,7 @@ test('#visStateReducer -> APPLY_CPU_FILTER. has cpu filter', t => {
   t.equal(
     nextState.datasets[dataId].filteredIdxCPU,
     nextState2.datasets[dataId].filteredIdxCPU,
-    'should directly copy filter result when filter hasnot changed'
+    'should directly copy filter result when filter has not changed'
   );
 
   t.end();
@@ -3940,7 +4530,7 @@ test('#uiStateReducer -> SET_FEATURES/SET_SELECTED_FEATURE/DELETE_FEATURE', t =>
   t.end();
 });
 
-test('#visStateReducer -> APPLY_CPU_FILTER. has multi datsets', t => {
+test('#visStateReducer -> APPLY_CPU_FILTER has multi datasets', t => {
   const initialState = CloneDeep(StateWFilters.visState);
   const previousDataset1 = initialState.datasets[testCsvDataId];
   const previousDataset2 = initialState.datasets[testGeoJsonDataId];
@@ -4123,5 +4713,365 @@ test('#visStateReducer -> PIN_TABLE_COLUMN', t => {
     'should remove from pinned columns'
   );
 
+  t.end();
+});
+
+test('#visStateReducer -> LOAD_FILES', async t => {
+  const loadFilesSuccessSpy = sinon.spy(VisStateActions, 'loadFilesSuccess');
+  const loadFileErrSpy = sinon.spy(Console, 'warn');
+  const initialState = CloneDeep(InitialState).visState;
+  const mockResults = {
+    data: [
+      {value1: 'a', value2: 1},
+      {value1: 'b', value2: 2}
+    ]
+  };
+  const mockFiles = [
+    {type: 'text/csv', name: 'test-file.csv'},
+    {type: 'text/csv', name: 'test-file-2.csv'}
+  ];
+  // mock async generator
+  async function* run(fileName) {
+    // Sleep for 100ms, see: https://masteringjs.io/tutorials/fundamentals/sleep
+    let percent = 0;
+    await new Promise(resolve => setTimeout(resolve, 100));
+    while (percent < 1) {
+      percent += 1;
+      yield {progress: {percent}, fileName, ...mockResults};
+    }
+  }
+
+  const nextState = reducer(initialState, VisStateActions.loadFiles(mockFiles));
+  const [task1, ...more] = drainTasksForTesting();
+
+  t.equal(more.length, 0, 'should ceate 1 task');
+
+  const expectedTask1 = {
+    type: 'LOAD_FILE_TASK',
+    payload: {
+      file: {type: 'text/csv', name: 'test-file.csv'},
+      fileCache: [],
+      loaders: [],
+      loadOptions: {}
+    }
+  };
+
+  t.comment(JSON.stringify(task1));
+  t.equal(task1.type, expectedTask1.type, 'should create LOAD_FILE_TASK task');
+  t.deepEqual(task1.payload, expectedTask1.payload, 'should create LOAD_FILE_TASK correct payload');
+
+  const expectedFileLoading = {
+    fileCache: [],
+    filesToLoad: [{type: 'text/csv', name: 'test-file-2.csv'}],
+    onFinish: VisStateActions.loadFilesSuccess
+  };
+  const expectedFileLoadingProgress = {
+    'test-file.csv': {percent: 0, message: 'loading...', fileName: 'test-file.csv', error: null},
+    'test-file-2.csv': {percent: 0, message: '', fileName: 'test-file-2.csv', error: null}
+  };
+
+  t.deepEqual(nextState.fileLoading, expectedFileLoading, 'should save fileLoading in state');
+  t.deepEqual(
+    nextState.fileLoadingProgress,
+    expectedFileLoadingProgress,
+    'should save fileLoadingProgress in state'
+  );
+
+  const asyncIterator = run('test-file.csv');
+
+  // test nextFileBatchUpdater
+  const nextState2 = reducer(nextState, succeedTaskInTest(task1, asyncIterator));
+  // test LOAD_FILE_TASK success
+  const [task2, ...more2] = drainTasksForTesting();
+  t.equal(more2.length, 0, 'should ceate 1 task');
+  t.equal(task2.type, 'UNWRAP', 'should return an UNWRAP task');
+  t.ok(task2.payload instanceof Promise, 'task 2 payload should be a Promise');
+
+  t.equal(
+    nextState2.fileLoading,
+    nextState.fileLoading,
+    'fileLoading should not change for the first batch'
+  );
+  t.deepEqual(
+    nextState2.fileLoadingProgress,
+    nextState.fileLoadingProgress,
+    'fileLoadingProgress should not change for the first batch'
+  );
+
+  // test LOAD_FILE_TASK error
+  const err1 = {message: 'error 1'};
+  const nextState2Err = reducer(nextState, errorTaskInTest(task1, err1));
+  const [task2Err, ...more2err] = drainTasksForTesting();
+  t.equal(more2err.length, 0, 'should ceate 1 task');
+  const expectedErrProgress = {
+    'test-file.csv': {percent: 0, message: 'loading...', fileName: 'test-file.csv', error: err1},
+    'test-file-2.csv': {percent: 0, message: '', fileName: 'test-file-2.csv', error: null}
+  };
+  t.deepEqual(
+    nextState2Err.fileLoadingProgress,
+    expectedErrProgress,
+    'should save error to fileLoadingProgress'
+  );
+  loadFileErrSpy.calledWith(err1);
+
+  t.equal(
+    task2Err.type,
+    'DELAY_TASK',
+    'should create a DELAY_TASK task when loadFileErr is triggered'
+  );
+  const nextState3Err = reducer(nextState2Err, succeedTaskInTest(task2Err));
+  const [task3Err, ...more3err] = drainTasksForTesting();
+  t.equal(more3err.length, 0, 'should ceate 1 task');
+  t.equal(task3Err.type, 'LOAD_FILE_TASK', 'should return an LOAD_FILE_TASK');
+  t.deepEqual(
+    task3Err.payload,
+    {
+      file: {type: 'text/csv', name: 'test-file-2.csv'},
+      fileCache: [],
+      loaders: [],
+      loadOptions: {}
+    },
+    'should return an LOAD_FILE_TASK with 2nd file to load'
+  );
+  const expectedErrFileLoadingProgress = {
+    'test-file.csv': {percent: 0, message: 'loading...', fileName: 'test-file.csv', error: err1},
+    'test-file-2.csv': {percent: 0, message: 'loading...', fileName: 'test-file-2.csv', error: null}
+  };
+  t.deepEqual(
+    nextState3Err.fileLoadingProgress,
+    expectedErrFileLoadingProgress,
+    'fileLoadingProgress should update whe calling loadNextfileUpdater'
+  );
+  t.deepEqual(
+    nextState3Err.fileLoading,
+    {
+      fileCache: [],
+      filesToLoad: [],
+      onFinish: VisStateActions.loadFilesSuccess
+    },
+    'fileLoading should not add result to fileCache when error'
+  );
+
+  // UNWRAP Task success
+  const unwrapSuccess = await task2.payload;
+  const resultState3 = reducer(nextState2, succeedTaskInTest(task2, unwrapSuccess));
+
+  // should return another unwrap task
+  const [task3, ...more3] = drainTasksForTesting();
+  t.equal(more3.length, 0, 'should ceate 1 task');
+  t.equal(task3.type, 'UNWRAP', 'should return an UNWRAP task');
+  t.ok(task3.payload instanceof Promise, 'task 3 payload should be a Promise');
+  const expectedFileLoadingProgress3 = {
+    'test-file.csv': {percent: 1, message: 'loading...', fileName: 'test-file.csv', error: null},
+    'test-file-2.csv': {percent: 0, message: '', fileName: 'test-file-2.csv', error: null}
+  };
+  t.equal(
+    resultState3.fileLoading,
+    nextState2.fileLoading,
+    'fileLoading should not change when loadingis not finished'
+  );
+  t.deepEqual(
+    resultState3.fileLoadingProgress,
+    expectedFileLoadingProgress3,
+    'fileLoadingProgress should update with percent'
+  );
+
+  // calling UNWRAP_TASK sucess to create File Process task
+  const unwrapSuccess3 = await task3.payload;
+  const resultState4 = reducer(resultState3, succeedTaskInTest(task3, unwrapSuccess3));
+  const [task4, ...more4] = drainTasksForTesting();
+
+  const expectedFileLoadingProgress4 = {
+    'test-file.csv': {percent: 1, message: 'processing...', fileName: 'test-file.csv', error: null},
+    'test-file-2.csv': {percent: 0, message: '', fileName: 'test-file-2.csv', error: null}
+  };
+  t.equal(resultState3.fileLoading, resultState4.fileLoading, 'fileLoading should be the same');
+  t.deepEqual(
+    resultState4.fileLoadingProgress,
+    expectedFileLoadingProgress4,
+    'fileLoadingProgress should update to reflect processing'
+  );
+
+  t.equal(more4.length, 0, 'should ceate 1 task');
+  const expectedpayload = {
+    content: {progress: {percent: 1}, fileName: 'test-file.csv', ...mockResults},
+    fileCache: []
+  };
+  t.equal(task4.type, 'PROCESS_FILE_CONTENT', 'should return an PROCESS_FILE_CONTENT task');
+  t.deepEqual(
+    task4.payload,
+    expectedpayload,
+    'PROCESS_FILE_CONTENT task payload should be correct'
+  );
+
+  const fileProcessResult = [
+    {
+      data: [],
+      info: {
+        label: 'test_data.csv',
+        format: 'csv'
+      }
+    }
+  ];
+
+  // calling loadFileStepSuccess with file process result
+  const resultState5 = reducer(resultState4, succeedTaskInTest(task4, fileProcessResult));
+
+  const expectedFileLoadingProgress5 = {
+    'test-file.csv': {percent: 1, message: 'Done', fileName: 'test-file.csv', error: null},
+    'test-file-2.csv': {percent: 0, message: '', fileName: 'test-file-2.csv', error: null}
+  };
+  t.deepEqual(
+    resultState5.fileLoadingProgress,
+    expectedFileLoadingProgress5,
+    'fileLoadingProgress should update to show finish'
+  );
+  t.deepEqual(
+    resultState5.fileLoading,
+    {
+      fileCache: fileProcessResult,
+      filesToLoad: [{type: 'text/csv', name: 'test-file-2.csv'}],
+      onFinish: VisStateActions.loadFilesSuccess
+    },
+    'fileLoading should update to add result to fileCache'
+  );
+  const [task5, ...more5] = drainTasksForTesting();
+  t.equal(more5.length, 0, 'should ceate 1 task');
+  t.equal(task5.type, 'DELAY_TASK', 'should return an DELAY_TASK');
+
+  // calling delayed task succeed to trigger load next file
+  const resultState6 = reducer(resultState5, succeedTaskInTest(task5));
+  const [task6, ...more6] = drainTasksForTesting();
+  t.equal(more6.length, 0, 'should ceate 1 task');
+  t.equal(task6.type, 'LOAD_FILE_TASK', 'should return an LOAD_FILE_TASK');
+  t.deepEqual(
+    task6.payload,
+    {
+      file: {type: 'text/csv', name: 'test-file-2.csv'},
+      fileCache: fileProcessResult,
+      loaders: [],
+      loadOptions: {}
+    },
+    'should return an LOAD_FILE_TASK with 2nd file to load'
+  );
+  const expectedFileLoadingProgress6 = {
+    'test-file.csv': {percent: 1, message: 'Done', fileName: 'test-file.csv', error: null},
+    'test-file-2.csv': {percent: 0, message: 'loading...', fileName: 'test-file-2.csv', error: null}
+  };
+  t.deepEqual(
+    resultState6.fileLoadingProgress,
+    expectedFileLoadingProgress6,
+    'fileLoadingProgress should update whe calling loadNextfileUpdater'
+  );
+  t.deepEqual(
+    resultState6.fileLoading,
+    {
+      fileCache: fileProcessResult,
+      filesToLoad: [],
+      onFinish: VisStateActions.loadFilesSuccess
+    },
+    'fileLoading should update to add result to fileCache'
+  );
+  // fast forward so we can test final result
+  const asyncIterator2 = run('test-file-2.csv');
+  const resultState7 = reducer(resultState6, succeedTaskInTest(task6, asyncIterator2));
+  const [task7] = drainTasksForTesting();
+
+  const unwrapSuccess7 = await task7.payload;
+  const resultState8 = reducer(resultState7, succeedTaskInTest(task7, unwrapSuccess7));
+  const [task8] = drainTasksForTesting();
+  const unwrapSuccess8 = await task8.payload;
+  const resultState9 = reducer(resultState8, succeedTaskInTest(task8, unwrapSuccess8));
+  // process task
+  const [task9] = drainTasksForTesting();
+  const file2ProcessResult = [
+    ...fileProcessResult,
+    {
+      data: [{value: 1}],
+      info: {
+        label: 'test_data_2.csv',
+        format: 'csv'
+      }
+    }
+  ];
+  const resultState10 = reducer(resultState9, succeedTaskInTest(task9, file2ProcessResult));
+
+  const expectedFileLoadingProgress10 = {
+    'test-file.csv': {percent: 1, message: 'Done', fileName: 'test-file.csv', error: null},
+    'test-file-2.csv': {percent: 1, message: 'Done', fileName: 'test-file-2.csv', error: null}
+  };
+  t.deepEqual(
+    resultState10.fileLoadingProgress,
+    expectedFileLoadingProgress10,
+    'fileLoadingProgress should update to show finish both files'
+  );
+  t.deepEqual(
+    resultState10.fileLoading,
+    {
+      fileCache: file2ProcessResult,
+      filesToLoad: [],
+      onFinish: VisStateActions.loadFilesSuccess
+    },
+    'fileLoading should update to add 2nd file result to fileCache'
+  );
+  const [task10, ...more10] = drainTasksForTesting();
+  t.equal(more10.length, 0, 'should ceate 1 task');
+  t.equal(task10.type, 'DELAY_TASK', 'should return an DELAY_TASK for onFinish');
+
+  // calling delayed task succeed to trigger load next file
+  /* eslint-disable no-unused-vars */
+  const resultState11 = reducer(resultState10, succeedTaskInTest(task10));
+
+  t.ok(loadFilesSuccessSpy.calledOnce);
+  const expectedArgs = [
+    {data: [], info: {label: 'test_data.csv', format: 'csv'}},
+    {data: [{value: 1}], info: {label: 'test_data_2.csv', format: 'csv'}}
+  ];
+  t.ok(loadFilesSuccessSpy.calledWith(expectedArgs));
+  loadFilesSuccessSpy.restore();
+
+  loadFileErrSpy.restore();
+  t.end();
+});
+
+test('#visStateReducer -> setLayerAnimationTimeConfig', t => {
+  // change Trip layer isVisible
+  const nextState = reducer(
+    StateWTripGeojson.visState,
+    VisStateActions.setLayerAnimationTimeConfig({
+      timezone: 'America/New_York',
+      timeFormat: 'YYYY-MM-DD',
+      random: 1
+    })
+  );
+
+  t.equal(
+    nextState.animationConfig.timezone,
+    'America/New_York',
+    'should set animationConfig timezone'
+  );
+  t.equal(
+    nextState.animationConfig.timeFormat,
+    'YYYY-MM-DD',
+    'should set animationConfig timeFormat'
+  );
+  t.equal(nextState.animationConfig.random, undefined, 'should not set unknown key');
+  t.end();
+});
+
+test('#visStateReducer -> setFilterAnimationTimeConfig', t => {
+  // change Trip layer isVisible
+  const nextState = reducer(
+    StateWFilters.visState,
+    VisStateActions.setFilterAnimationTimeConfig(1, {timezone: 'America/New_York'})
+  );
+
+  t.equal(nextState, StateWFilters.visState, 'should not change if is not time filter');
+
+  const nextState1 = reducer(
+    StateWFilters.visState,
+    VisStateActions.setFilterAnimationTimeConfig(0, {timezone: 'America/New_York'})
+  );
+  t.equal(nextState1.filters[0].timezone, 'America/New_York', 'should set filter timeFormat');
   t.end();
 });

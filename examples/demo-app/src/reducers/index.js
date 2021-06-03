@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -89,6 +89,10 @@ const demoReducer = combineReducers({
           exportMapboxAccessToken: AUTH_TOKENS.EXPORT_MAPBOX_TOKEN
         }
       }
+    },
+    visState: {
+      loaders: [], // Add additional loaders.gl loaders here
+      loadOptions: {} // Add additional loaders.gl loader options here
     }
   }),
   app: appReducer
@@ -125,7 +129,10 @@ export const loadRemoteResourceSuccess = (state, action) => {
     {
       payload: {
         datasets,
-        config
+        config,
+        options: {
+          centerMap: Boolean(!action.config)
+        }
       }
     }
   );

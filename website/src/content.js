@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,11 +70,11 @@ export const HERO_IMAGES_SCALED = [
 export const HEADER_NAVS = [
   {
     text: 'User Guide',
-    link: 'https://github.com/keplergl/kepler.gl/blob/master/docs/user-guides/j-get-started.md'
+    link: 'https://docs.kepler.gl/docs/user-guides'
   },
   {
     text: 'Documentation',
-    link: 'https://github.com/keplergl/kepler.gl/blob/master/docs/api-reference/overview.md'
+    link: 'https://docs.kepler.gl/docs/api-reference'
   },
   {
     text: 'Github',

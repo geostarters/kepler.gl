@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,6 @@
  * Recursively save / load value for state based on property keys,
  * if property[key] is another schema
  * Use is to get value to save
- * @param {Object} opertation - 'save' or 'load'
  * @param {Object} state - state to save
  * @param {Object} properties - properties schema
  * @returns {Object} - saved state

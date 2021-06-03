@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -77,6 +77,7 @@ export const hexIdDataConfig = {
               columns: {
                 hex_id: 'hex_id'
               },
+              hidden: false,
               isVisible: true,
               visConfig: {
                 opacity: 0.8,
@@ -89,7 +90,8 @@ export const hexIdDataConfig = {
                 coverage: 1,
                 sizeRange: [0, 500],
                 coverageRange: [0, 1],
-                elevationScale: 5
+                elevationScale: 5,
+                enableElevationZoomFactor: true
               },
               textLabel: [
                 {
@@ -124,6 +126,9 @@ export const hexIdDataConfig = {
           },
           brush: {
             size: 0.5,
+            enabled: false
+          },
+          geocoder: {
             enabled: false
           }
         },
@@ -160,6 +165,7 @@ export const mergedFilters = [
     plotType: 'histogram',
     yAxis: null,
     isAnimating: false,
+    animationWindow: 'free',
     fieldIdx: [1],
     domain: [1, 76],
     step: 0.01,
@@ -179,18 +185,18 @@ const mergedFields = [
   {
     name: 'hex_id',
     format: '',
-    tableFieldIndex: 1,
+    fieldIdx: 0,
     type: 'string',
-    id: 'hex_id',
-    analyzerType: 'STRING'
+    analyzerType: 'STRING',
+    valueAccessor: values => values[0]
   },
   {
     name: 'value',
     format: '',
-    tableFieldIndex: 2,
+    fieldIdx: 1,
     type: 'integer',
-    id: 'value',
     analyzerType: 'INT',
+    valueAccessor: values => values[1],
     filterProps: {
       domain: [1, 76],
       step: 0.01,
@@ -336,16 +342,17 @@ mergedH3Layer.config = {
       fieldIdx: 0
     }
   },
+  hidden: false,
   isVisible: true,
   highlightColor: [252, 242, 26, 255],
   isConfigActive: false,
   colorField: {
     name: 'value',
     format: '',
-    tableFieldIndex: 2,
+    fieldIdx: 1,
     type: 'integer',
     analyzerType: 'INT',
-    id: 'value'
+    valueAccessor: values => values[1]
   },
   colorScale: 'quantile',
   colorDomain: [18, 19, 26, 27],
@@ -367,6 +374,7 @@ mergedH3Layer.config = {
     sizeRange: [0, 500],
     coverageRange: [0, 1],
     elevationScale: 5,
+    enableElevationZoomFactor: true,
     enable3d: false
   },
   textLabel: [
@@ -392,6 +400,10 @@ export const expectedMergedDataset = {
   id: 'h3-hex-id',
   label: 'new dataset',
   color: 'dont test me',
+  metadata: {
+    id: 'h3-hex-id',
+    label: 'new dataset'
+  },
   allData: [
     ['89283082c2fffff', 64],
     ['8928308288fffff', 73],
@@ -444,5 +456,11 @@ export const expectedMergedDataset = {
     fixedDomain: [],
     cpu: [],
     gpu: [mergedFilters[0]]
+  },
+  changedFilters: {
+    dynamicDomain: {byjasfp0u: 'added'},
+    fixedDomain: null,
+    cpu: null,
+    gpu: {byjasfp0u: 'added'}
   }
 };

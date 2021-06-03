@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,16 +23,10 @@ import Toolbar from './toolbar';
 
 const VerticalToolbar = styled(Toolbar)`
   flex-direction: column;
-  padding: 0 24px;
 
   .toolbar-item {
-    padding: 16px 0;
-    border-right: 0;
-    border-bottom: 1px solid ${props => props.theme.panelHeaderIcon};
-
-    &:last-of-type {
-      border-bottom: 0;
-    }
+    width: 78px;
+    padding: 13px 16px;
   }
 `;
 

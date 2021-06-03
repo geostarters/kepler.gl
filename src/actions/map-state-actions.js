@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -85,5 +85,6 @@ export const toggleSplitMap = createAction(ActionTypes.TOGGLE_SPLIT_MAP, index =
  * @public
  */
 /* eslint-disable no-unused-vars */
+// @ts-ignore
 const mapStateActions = null;
 /* eslint-enable no-unused-vars */

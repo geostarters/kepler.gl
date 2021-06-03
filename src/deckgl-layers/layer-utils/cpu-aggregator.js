@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 /* eslint-disable guard-for-in */
-import {_BinSorter as BinSorter, AGGREGATION_OPERATION} from '@deck.gl/aggregation-layers';
+import {AGGREGATION_OPERATION, _BinSorter as BinSorter} from '@deck.gl/aggregation-layers';
 import {console as Console} from 'global/window';
 
 import {aggregate} from 'utils/aggregate-utils';

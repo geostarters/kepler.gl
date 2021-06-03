@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,8 @@ const SideBarInner = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
+  border-left: ${props => props.theme.sidePanelBorder}px solid
+    ${props => props.theme.sidePanelBorderColor};
 `;
 
 const StyledCollapseButton = styled.div`

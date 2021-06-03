@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import PanelHeaderAction from 'components/side-panel/panel-header-action';
+import PanelHeaderActionFactory from 'components/side-panel/panel-header-action';
 import {Trash} from 'components/common/icons';
 import {createLinearGradient} from 'utils/color-utils';
 import {StyledPanelHeader} from 'components/common/styled-components';
@@ -37,7 +37,7 @@ export const StyledFilterHeader = styled(StyledPanelHeader)`
   ${props =>
     props.labelRCGColorValues && props.labelRCGColorValues.length > 0
       ? `border-image: ${createLinearGradient('bottom', props.labelRCGColorValues)} 3;`
-      : 'border-color: transparent;'}
+      : 'border-color: transparent;'};
 `;
 
 const StyledChildrenContainer = styled.div`
@@ -45,9 +45,12 @@ const StyledChildrenContainer = styled.div`
   flex: 2;
 `;
 
-FilterPanelHeaderFactory.deps = [];
+FilterPanelHeaderFactory.deps = [PanelHeaderActionFactory];
 
-function FilterPanelHeaderFactory() {
+function FilterPanelHeaderFactory(PanelHeaderAction) {
+  const defaultActionIcons = {
+    delete: Trash
+  };
   const FilterPanelHeader = ({
     children,
     datasets,
@@ -55,7 +58,8 @@ function FilterPanelHeaderFactory() {
     setFilter,
     idx,
     filter,
-    removeFilter
+    removeFilter,
+    actionIcons = defaultActionIcons
   }) => (
     <StyledFilterHeader
       className="filter-panel__header"
@@ -68,7 +72,7 @@ function FilterPanelHeaderFactory() {
         tooltipType="error"
         onClick={removeFilter}
         hoverColor={'errorColor'}
-        IconComponent={Trash}
+        IconComponent={actionIcons.delete}
       />
     </StyledFilterHeader>
   );

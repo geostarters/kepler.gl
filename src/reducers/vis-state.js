@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,8 @@ const actionHandler = {
 
   [ActionTypes.ADD_LAYER]: visStateUpdaters.addLayerUpdater,
 
+  [ActionTypes.DUPLICATE_LAYER]: visStateUpdaters.duplicateLayerUpdater,
+
   [ActionTypes.ENLARGE_FILTER]: visStateUpdaters.enlargeFilterUpdater,
 
   [ActionTypes.INTERACTION_CONFIG_CHANGE]: visStateUpdaters.interactionConfigChangeUpdater,
@@ -51,11 +53,15 @@ const actionHandler = {
 
   [ActionTypes.LAYER_COLOR_UI_CHANGE]: visStateUpdaters.layerColorUIChangeUpdater,
 
+  [ActionTypes.TOGGLE_LAYER_ANIMATION]: visStateUpdaters.toggleLayerAnimationUpdater,
+
   [ActionTypes.LOAD_FILES]: visStateUpdaters.loadFilesUpdater,
 
   [ActionTypes.LOAD_FILES_ERR]: visStateUpdaters.loadFilesErrUpdater,
 
   [ActionTypes.LOAD_NEXT_FILE]: visStateUpdaters.loadNextFileUpdater,
+
+  [ActionTypes.LOAD_FILE_STEP_SUCCESS]: visStateUpdaters.loadFileStepSuccessUpdater,
 
   [ActionTypes.MAP_CLICK]: visStateUpdaters.mapClickUpdater,
 
@@ -75,11 +81,16 @@ const actionHandler = {
 
   [ActionTypes.SET_FILTER]: visStateUpdaters.setFilterUpdater,
 
+  [ActionTypes.SET_FILTER_ANIMATION_TIME]: visStateUpdaters.setFilterAnimationTimeUpdater,
+
+  [ActionTypes.SET_FILTER_ANIMATION_TIME_CONFIG]:
+    visStateUpdaters.setFilterAnimationTimeConfigUpdater,
+
+  [ActionTypes.SET_FILTER_ANIMATION_WINDOW]: visStateUpdaters.setFilterAnimationWindowUpdater,
+
   [ActionTypes.SET_FILTER_PLOT]: visStateUpdaters.setFilterPlotUpdater,
 
   [ActionTypes.SET_MAP_INFO]: visStateUpdaters.setMapInfoUpdater,
-
-  [ActionTypes.SET_VISIBLE_LAYERS_FOR_MAP]: visStateUpdaters.setVisibleLayersForMapUpdater,
 
   [ActionTypes.SHOW_DATASET_TABLE]: visStateUpdaters.showDatasetTableUpdater,
 
@@ -87,7 +98,7 @@ const actionHandler = {
 
   [ActionTypes.UPDATE_FILTER_ANIMATION_SPEED]: visStateUpdaters.updateFilterAnimationSpeedUpdater,
 
-  [ActionTypes.UPDATE_ANIMATION_TIME]: visStateUpdaters.updateAnimationTimeUpdater,
+  [ActionTypes.SET_LAYER_ANIMATION_TIME]: visStateUpdaters.setLayerAnimationTimeUpdater,
 
   [ActionTypes.UPDATE_LAYER_ANIMATION_SPEED]: visStateUpdaters.updateLayerAnimationSpeedUpdater,
 
@@ -99,6 +110,8 @@ const actionHandler = {
 
   [ActionTypes.UPDATE_VIS_DATA]: visStateUpdaters.updateVisDataUpdater,
 
+  [ActionTypes.RENAME_DATASET]: visStateUpdaters.renameDatasetUpdater,
+
   [ActionTypes.SET_FEATURES]: visStateUpdaters.setFeaturesUpdater,
 
   [ActionTypes.DELETE_FEATURE]: visStateUpdaters.deleteFeatureUpdater,
@@ -109,7 +122,7 @@ const actionHandler = {
 
   [ActionTypes.SET_EDITOR_MODE]: visStateUpdaters.setEditorModeUpdater,
 
-  [ActionTypes.TOGGLE_EDITOR_VISIBILITY]: visStateUpdaters.toggleEditorVisibility,
+  [ActionTypes.TOGGLE_EDITOR_VISIBILITY]: visStateUpdaters.toggleEditorVisibilityUpdater,
 
   [ActionTypes.TOGGLE_FILTER_FEATURE]: visStateUpdaters.toggleFilterFeatureUpdater,
 
@@ -119,11 +132,18 @@ const actionHandler = {
 
   [ActionTypes.PIN_TABLE_COLUMN]: visStateUpdaters.pinTableColumnUpdater,
 
-  [ActionTypes.COPY_TABLE_COLUMN]: visStateUpdaters.copyTableColumnUpdater
+  [ActionTypes.COPY_TABLE_COLUMN]: visStateUpdaters.copyTableColumnUpdater,
+
+  [ActionTypes.NEXT_FILE_BATCH]: visStateUpdaters.nextFileBatchUpdater,
+
+  [ActionTypes.PROCESS_FILE_CONTENT]: visStateUpdaters.processFileContentUpdater,
+
+  [ActionTypes.SET_LAYER_ANIMATION_TIME_CONFIG]: visStateUpdaters.setLayerAnimationTimeConfigUpdater
 };
 
 // construct vis-state reducer
 export const visStateReducerFactory = (initialState = {}) =>
+  // @ts-ignore
   handleActions(actionHandler, {
     ...visStateUpdaters.INITIAL_VIS_STATE,
     ...initialState,

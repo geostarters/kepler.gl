@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,9 @@ import React from 'react';
 import test from 'tape';
 import {shallow} from 'enzyme';
 import sinon from 'sinon';
-import {FeatureActionPanel} from 'components/editor/feature-action-panel';
+import {PureFeatureActionPanelFactory} from 'components/editor/feature-action-panel';
+
+const FeatureActionPanel = PureFeatureActionPanelFactory();
 
 test('FeatureActionPanel -> display layers', t => {
   const layers = [

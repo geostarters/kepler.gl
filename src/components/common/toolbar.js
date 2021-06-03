@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,8 +25,7 @@ const Toolbar = styled.div`
   flex-direction: row;
   background-color: ${props => props.theme.dropdownListBgd};
   box-shadow: ${props => props.theme.dropdownListShadow};
-  font-size: 11px;
-  padding: 16px 0;
+  font-size: 12px;
   transition: ${props => props.theme.transitionSlow};
   margin-top: ${props => (props.show ? '6px' : '20px')};
   opacity: ${props => (props.show ? 1 : 0)};
@@ -38,28 +37,6 @@ const Toolbar = styled.div`
     box-shadow: none;
     background-color: transparent;
     display: flex;
-  }
-
-  .toolbar-item {
-    align-items: center;
-    border-right: 1px solid ${props => props.theme.panelHeaderIcon};
-    padding: 0 22px;
-    display: flex;
-    flex-direction: column;
-
-    .toolbar-item__title {
-      white-space: nowrap;
-      margin-top: 4px;
-    }
-
-    :hover {
-      cursor: pointer;
-      color: ${props => props.theme.textColorHl};
-    }
-
-    &:last-child {
-      border-right: 0;
-    }
   }
 `;
 

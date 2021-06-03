@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,6 +66,11 @@ function mockClipboardData() {
 Object.defineProperty(window, 'clipboardData', {
   value: mockClipboardData(),
   writable: true
+});
+
+// These do not seem to be present under jsdom v16, even though the documentation suggests that should be the case
+['addEventListener', 'removeEventListener', 'dispatchEvent'].forEach(prop => {
+  window[prop] = () => {};
 });
 
 const nop = () => {};

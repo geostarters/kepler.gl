@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -839,6 +839,7 @@ export const mergedFilters = [
     id: '9ca0l7p2a',
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     name: ['zip_area'],
     type: 'range',
     fieldIdx: [3],
@@ -873,26 +874,27 @@ mergedLayer0.config = {
       value: 'simplified_shape_v2'
     }
   },
+  hidden: false,
   isVisible: true,
   isConfigActive: false,
   highlightColor: [252, 242, 26, 255],
   colorField: {
     name: 'c_m_r',
     type: 'integer',
-    id: 'c_m_r',
     format: '',
-    tableFieldIndex: 9,
-    analyzerType: 'INT'
+    fieldIdx: 8,
+    analyzerType: 'INT',
+    valueAccessor: values => values[8]
   },
   colorScale: 'quantize',
   colorDomain: [45, 9642],
   strokeColorField: {
     name: 'c_m_r',
     type: 'integer',
-    id: 'c_m_r',
     format: '',
-    tableFieldIndex: 9,
-    analyzerType: 'INT'
+    fieldIdx: 8,
+    analyzerType: 'INT',
+    valueAccessor: values => values[8]
   },
   strokeColorScale: 'quantize',
   strokeColorDomain: [45, 9642],
@@ -903,10 +905,10 @@ mergedLayer0.config = {
   heightField: {
     name: 'c_a_v',
     type: 'real',
-    id: 'c_a_v',
     format: '',
-    tableFieldIndex: 11,
-    analyzerType: 'FLOAT'
+    fieldIdx: 10,
+    analyzerType: 'FLOAT',
+    valueAccessor: values => values[10]
   },
   heightScale: 'linear',
   heightDomain: [211.9244058, 858.5168842],
@@ -959,6 +961,7 @@ mergedLayer0.config = {
     radiusRange: [0, 50],
     heightRange: [0, 500],
     elevationScale: 18,
+    enableElevationZoomFactor: true,
     stroked: true,
     filled: true,
     strokeColor: [181, 18, 65],
@@ -2703,12 +2706,13 @@ mergedLayer1.config = {
   strokeColorDomain: [0, 1],
   sizeField: {
     name: 'c_ta',
-    id: 'c_ta',
     type: 'real',
+    fieldIdx: 12,
     format: '',
-    tableFieldIndex: 13,
-    analyzerType: 'FLOAT'
+    analyzerType: 'FLOAT',
+    valueAccessor: values => values[12]
   },
+  hidden: false,
   sizeScale: 'linear',
   sizeDomain: [0.970877074, 1],
   textLabel: [DEFAULT_TEXT_LABEL],
@@ -2742,6 +2746,7 @@ mergedLayer1.config = {
     radiusRange: [0, 50],
     heightRange: [0, 500],
     elevationScale: 5,
+    enableElevationZoomFactor: true,
     stroked: true,
     filled: false,
     enable3d: false,
@@ -2771,8 +2776,23 @@ export const mergedInteraction = {
     ...defaultInteraction.tooltip,
     enabled: false,
     config: {
+      compareMode: false,
+      compareType: 'absolute',
       fieldsToShow: {
-        a5ybmwl2d: ['a_zip', 'str_type', 'int_type']
+        a5ybmwl2d: [
+          {
+            name: 'a_zip',
+            format: null
+          },
+          {
+            name: 'str_type',
+            format: null
+          },
+          {
+            name: 'int_type',
+            format: null
+          }
+        ]
       }
     }
   },

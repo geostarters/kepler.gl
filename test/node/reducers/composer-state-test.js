@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -230,9 +230,20 @@ test('#composerStateReducer - addDataToMapUpdater: keepExistingConfig', t => {
       tooltip: {
         ...oldInteractionConfig.tooltip,
         config: {
+          compareMode: false,
+          compareType: 'absolute',
           fieldsToShow: {
             ...oldInteractionConfig.tooltip.config.fieldsToShow,
-            [hexDataId]: ['hex_id', 'value']
+            [hexDataId]: [
+              {
+                name: 'hex_id',
+                format: null
+              },
+              {
+                name: 'value',
+                format: null
+              }
+            ]
           }
         }
       }
@@ -262,6 +273,7 @@ test('#composerStateReducer - addDataToMapUpdater: keepExistingConfig', t => {
     [sampleConfig.dataId, hexDataId],
     'should save 2 datasets to state'
   );
+
   t.equal(
     actualVisState.datasets[sampleConfig.dataId],
     oldDatasets[sampleConfig.dataId],
@@ -274,12 +286,14 @@ test('#composerStateReducer - addDataToMapUpdater: keepExistingConfig', t => {
     actualVisState.datasets[hexDataId],
     'should merge and filter hexdata'
   );
+
   cmpInteraction(t, expectedVisState.interactionConfig, actualVisState.interactionConfig);
   t.deepEqual(
     expectedVisState.layerOrder,
     actualVisState.layerOrder,
     'Should create new layer, move it to the top'
   );
+
   t.deepEqual(
     expectedVisState.splitMaps,
     actualVisState.splitMaps,
@@ -325,5 +339,28 @@ test('#composerStateReducer - addDataToMapUpdater: readOnly', t => {
     }
   });
   t.equal(nextState2.uiState.readOnly, false, 'should set readonly to be false');
+  t.end();
+});
+
+test('#composerStateReducer - addDataToMapUpdater: autoCreateLayers', t => {
+  const datasets = {
+    data: processCsvData(testCsvData),
+    info: {
+      id: sampleConfig.dataId
+    }
+  };
+  const state = keplerGlReducer({}, registerEntry({id: 'test'})).test;
+
+  // old state contain splitMaps
+  const nextState = addDataToMapUpdater(state, {
+    payload: {
+      datasets,
+      options: {
+        autoCreateLayers: false
+      }
+    }
+  });
+  t.equal(nextState.visState.layers.length, 0, 'should not create layers');
+
   t.end();
 });

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import memoize from 'lodash.memoize';
 import {console as Console} from 'global/window';
-import {injector, typeCheckRecipe} from './injector';
+import {injector, provideRecipesToInjector, flattenDeps} from './injector';
 import KeplerGlFactory from './kepler-gl';
 import {forwardTo} from 'actions/action-wrapper';
 
@@ -57,6 +57,7 @@ export function ContainerFactory(KeplerGl) {
     * @param {string} props.mapboxApiAccessToken - _required_
     * @param {string} props.mapboxApiUrl - _optional_
     * @param {Boolean} props.mapStylesReplaceDefault - _optional_
+    * @param {object} props.initialUiState - _optional_
 
     * You can create a free account at [www.mapbox.com](www.mapbox.com) and create a token at
     * [www.mapbox.com/account/access-tokens](www.mapbox.com/account/access-tokens)
@@ -89,7 +90,15 @@ export function ContainerFactory(KeplerGl) {
     }
 
     componentDidMount() {
-      const {id, mint, mapboxApiAccessToken, mapboxApiUrl, mapStylesReplaceDefault} = this.props;
+      const {
+        id,
+        mint,
+        mapboxApiAccessToken,
+        mapboxApiUrl,
+        mapStylesReplaceDefault,
+        initialUiState
+      } = this.props;
+
       // add a new entry to reducer
       this.props.dispatch(
         registerEntry({
@@ -97,7 +106,8 @@ export function ContainerFactory(KeplerGl) {
           mint,
           mapboxApiAccessToken,
           mapboxApiUrl,
-          mapStylesReplaceDefault
+          mapStylesReplaceDefault,
+          initialUiState
         })
       );
     }
@@ -145,14 +155,6 @@ export function ContainerFactory(KeplerGl) {
   return connect(mapStateToProps, dispatchToProps)(Container);
 }
 
-// entryPoint
-function flattenDeps(allDeps, factory) {
-  const addToDeps = allDeps.concat([factory]);
-  return Array.isArray(factory.deps) && factory.deps.length
-    ? factory.deps.reduce((accu, dep) => flattenDeps(accu, dep), addToDeps)
-    : addToDeps;
-}
-
 const allDependencies = flattenDeps([], ContainerFactory);
 
 // provide all dependencies to appInjector
@@ -163,20 +165,7 @@ export const appInjector = allDependencies.reduce(
 
 // Helper to inject custom components and return kepler.gl container
 export function injectComponents(recipes = []) {
-  return recipes
-    .reduce((inj, recipe) => {
-      if (!typeCheckRecipe(recipe)) {
-        return inj;
-      }
-
-      // collect dependencies of custom factories, if there is any.
-      // Add them to the injector
-      const customDependencies = flattenDeps([], recipe[1]);
-      inj = customDependencies.reduce((ij, factory) => ij.provide(factory, factory), inj);
-
-      return inj.provide(...recipe);
-    }, appInjector)
-    .get(ContainerFactory);
+  return provideRecipesToInjector(recipes, appInjector).get(ContainerFactory);
 }
 
 const InjectedContainer = appInjector.get(ContainerFactory);

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,9 @@ import styled from 'styled-components';
 import {console as Console} from 'global/window';
 
 import Accessor from './accessor';
-import KeyEvent from './keyevent';
 import DropdownList, {ListItem} from './dropdown-list';
 import {Search} from 'components/common/icons';
+import KeyEvent from 'constants/keyevent';
 
 const DEFAULT_CLASS = 'typeahead';
 /**
@@ -42,7 +42,8 @@ const DEFAULT_CLASS = 'typeahead';
 const TypeaheadWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  background-color: ${props => props.theme.dropdownListBgd};
+  background-color: ${props =>
+    props.light ? props.theme.dropdownListBgdLT : props.theme.dropdownListBgd};
   box-shadow: ${props => props.theme.dropdownListShadow};
 
   :focus {
@@ -50,18 +51,23 @@ const TypeaheadWrapper = styled.div`
   }
 `;
 
-const InputBox = styled.div`
+const InputBox = styled.div.attrs({
+  className: 'typeahead__input_box'
+})`
   padding: 8px;
 `;
 
 const TypeaheadInput = styled.input`
-  ${props => props.theme.secondaryInput} :hover {
+  ${props => (props.light ? props.theme.inputLT : props.theme.secondaryInput)} :hover {
     cursor: pointer;
-    background-color: ${props => props.theme.secondaryInputBgd};
+    background-color: ${props =>
+      props.light ? props.theme.selectBackgroundLT : props.theme.secondaryInputBgd};
   }
 `;
 
-const InputIcon = styled.div`
+const InputIcon = styled.div.attrs({
+  className: 'typeahead__input_icon'
+})`
   position: absolute;
   right: 15px;
   top: 14px;
@@ -171,6 +177,7 @@ class Typeahead extends Component {
     defaultClassNames: true,
     customListComponent: DropdownList,
     customListItemComponent: ListItem,
+    inputIcon: Search,
     customListHeaderComponent: null,
     showOptionsWhenEmpty: true,
     searchable: true,
@@ -188,6 +195,7 @@ class Typeahead extends Component {
     super(props);
 
     this.state = {
+      /** @type {ReadonlyArray<string>} */
       searchResults: [],
 
       // This should be called something else, 'entryValue'
@@ -258,6 +266,7 @@ class Typeahead extends Component {
         defaultClassNames={this.props.defaultClassNames}
         displayOption={this.props.displayOption}
         selectedItems={this.props.selectedItems}
+        light={this.props.light}
       />
     );
   }
@@ -459,6 +468,7 @@ class Typeahead extends Component {
         onKeyPress={this.props.onKeyPress}
         onKeyUp={this.props.onKeyUp}
         onFocus={this._onFocus}
+        light={this.props.light}
       >
         {this._renderHiddenInput()}
         {this.props.searchable ? (
@@ -473,9 +483,10 @@ class Typeahead extends Component {
               value={this.state.entryValue}
               onChange={this._onChange}
               onBlur={this._onBlur}
+              light={this.props.light}
             />
             <InputIcon>
-              <Search height="18px" />
+              <this.props.inputIcon height="18px" />
             </InputIcon>
           </InputBox>
         ) : null}

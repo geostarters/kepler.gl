@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ let composeEnhancers = compose;
 /**
  * comment out code below to enable Redux Devtools
  */
-/*
+
 if (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) {
   composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
     actionsBlacklist: [
@@ -55,6 +55,5 @@ if (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) {
     ]
   });
 }
-*/
 
 export default createStore(reducers, initialState, composeEnhancers(...enhancers));

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,10 +43,12 @@ import {addDataToMap} from 'actions/actions';
 import {
   DEFAULT_NOTIFICATION_TYPES,
   DEFAULT_NOTIFICATION_TOPICS,
-  DATASET_FORMATS
+  DATASET_FORMATS,
+  OVERWRITE_MAP_ID
 } from 'constants/default-settings';
 import {toArray} from 'utils/utils';
-import KeplerGlSchema from 'schemas';
+import {FILE_CONFLICT_MSG} from 'cloud-providers';
+import {DATASET_HANDLERS} from 'processors/data-processor';
 
 export const INITIAL_PROVIDER_STATE = {
   isProviderLoading: false,
@@ -54,9 +56,9 @@ export const INITIAL_PROVIDER_STATE = {
   providerError: null,
   currentProvider: null,
   successInfo: {},
-  mapSaved: null
+  mapSaved: null,
+  visualizations: []
 };
-import {DATASET_HANDLERS} from 'processors/data-processor';
 
 function createActionTask(action, payload) {
   if (typeof action === 'function') {
@@ -80,11 +82,14 @@ function _validateProvider(provider, method) {
   return true;
 }
 
+/**
+ * @type {typeof import('./provider-state-updaters').createGlobalNotificationTasks}
+ */
 function createGlobalNotificationTasks({type, message, delayClose = true}) {
   const id = generateHashId();
   const successNote = {
     id,
-    type: DEFAULT_NOTIFICATION_TYPES[type] || DEFAULT_NOTIFICATION_TYPES.success,
+    type: DEFAULT_NOTIFICATION_TYPES[type || ''] || DEFAULT_NOTIFICATION_TYPES.success,
     topic: DEFAULT_NOTIFICATION_TOPICS.global,
     message
   };
@@ -96,8 +101,7 @@ function createGlobalNotificationTasks({type, message, delayClose = true}) {
  * This method will export the current kepler config file to the chosen cloud proder
  * add returns a share URL
  *
- * @param {*} state
- * @param {*} action
+ * @type {typeof import('./provider-state-updaters').exportFileToCloudUpdater}
  */
 export const exportFileToCloudUpdater = (state, action) => {
   const {mapData, provider, options = {}, onSuccess, onError, closeModal} = action.payload;
@@ -129,11 +133,10 @@ export const exportFileToCloudUpdater = (state, action) => {
 
 /**
  *
- * @param {*} state
- * @param {*} action
+ * @type {typeof import('./provider-state-updaters').exportFileSuccessUpdater}
  */
 export const exportFileSuccessUpdater = (state, action) => {
-  const {response, provider, options, onSuccess, closeModal} = action.payload;
+  const {response, provider, options = {}, onSuccess, closeModal} = action.payload;
 
   const newState = {
     ...state,
@@ -158,8 +161,7 @@ export const exportFileSuccessUpdater = (state, action) => {
 
 /**
  * Close modal on success and display notification
- * @param {*} state
- * @param {*} action
+ * @type {typeof import('./provider-state-updaters').postSaveLoadSuccessUpdater}
  */
 export const postSaveLoadSuccessUpdater = (state, action) => {
   const message = action.payload || `Saved / Load to ${state.currentProvider} Success`;
@@ -175,17 +177,22 @@ export const postSaveLoadSuccessUpdater = (state, action) => {
 
 /**
  *
- * @param {*} state
- * @param {*} action
+ * @type {typeof import('./provider-state-updaters').exportFileErrorUpdater}
  */
 export const exportFileErrorUpdater = (state, action) => {
   const {error, provider, onError} = action.payload;
+
   const newState = {
     ...state,
-    isProviderLoading: false,
-    providerError: getError(error)
+    isProviderLoading: false
   };
 
+  if (isFileConflict(error)) {
+    newState.mapSaved = provider.name;
+    return withTask(newState, [ACTION_TASK().map(_ => toggleModal(OVERWRITE_MAP_ID))]);
+  }
+
+  newState.providerError = getError(error);
   const task = createActionTask(onError, {error, provider});
 
   return task ? withTask(newState, task) : newState;
@@ -217,6 +224,10 @@ export const loadCloudMapUpdater = (state, action) => {
 
   return withTask(newState, uploadFileTask);
 };
+
+function isFileConflict(error) {
+  return error && error.message === FILE_CONFLICT_MSG;
+}
 
 function checkLoadMapResponseError(response) {
   if (!response || !isPlainObject(response)) {
@@ -266,16 +277,22 @@ function parseLoadMapResponse(response, loadParams, provider) {
     return {info, data};
   });
 
-  const parsedConfig = map.config ? KeplerGlSchema.parseSavedConfig(map.config) : null;
-
   const info = {
     ...map.info,
     provider: provider.name,
     loadParams
   };
-  return {datasets: parsedDatasets, config: parsedConfig, info};
+  return {
+    datasets: parsedDatasets,
+    info,
+    ...(map.config ? {config: map.config} : {})
+  };
 }
 
+/**
+ *
+ * @type {typeof import('./provider-state-updaters').loadCloudMapSuccessUpdater}
+ */
 export const loadCloudMapSuccessUpdater = (state, action) => {
   const {response, loadParams, provider, onSuccess, onError} = action.payload;
 
@@ -306,6 +323,10 @@ export const loadCloudMapSuccessUpdater = (state, action) => {
   return tasks.length ? withTask(newState, tasks) : newState;
 };
 
+/**
+ *
+ * @type {typeof import('./provider-state-updaters').loadCloudMapErrorUpdater}
+ */
 export const loadCloudMapErrorUpdater = (state, action) => {
   const message = getError(action.payload.error) || `Error loading saved map`;
 
@@ -323,10 +344,10 @@ export const loadCloudMapErrorUpdater = (state, action) => {
     createGlobalNotificationTasks({type: 'error', message, delayClose: false})
   );
 };
+
 /**
  *
- * @param {*} state
- * @param {*} action
+ * @type {typeof import('./provider-state-updaters').resetProviderStatusUpdater}
  */
 export const resetProviderStatusUpdater = (state, action) => ({
   ...state,
@@ -338,8 +359,7 @@ export const resetProviderStatusUpdater = (state, action) => ({
 
 /**
  * Set current cloudProvider
- * @param {*} state
- * @param {*} action
+ * @type {typeof import('./provider-state-updaters').setCloudProviderUpdater}
  */
 export const setCloudProviderUpdater = (state, action) => ({
   ...state,
@@ -349,6 +369,10 @@ export const setCloudProviderUpdater = (state, action) => ({
   currentProvider: action.payload
 });
 
+/**
+ *
+ * @type {typeof import('./provider-state-updaters').getSavedMapsUpdater}
+ */
 export const getSavedMapsUpdater = (state, action) => {
   const provider = action.payload;
   if (!_validateProvider(provider, 'listMaps')) {
@@ -371,12 +395,20 @@ export const getSavedMapsUpdater = (state, action) => {
   );
 };
 
+/**
+ *
+ * @type {typeof import('./provider-state-updaters').getSavedMapsSuccessUpdater}
+ */
 export const getSavedMapsSuccessUpdater = (state, action) => ({
   ...state,
   isProviderLoading: false,
   visualizations: action.payload.visualizations
 });
 
+/**
+ *
+ * @type {typeof import('./provider-state-updaters').getSavedMapsErrorUpdater}
+ */
 export const getSavedMapsErrorUpdater = (state, action) => {
   const message =
     getError(action.payload.error) || `Error getting saved maps from ${state.currentProvider}`;

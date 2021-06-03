@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,12 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+import {LOCALES} from './locales';
+
 export default {
   property: {
     weight: 'weight',
     label: 'label',
     fillColor: 'fill color',
     color: 'color',
+    coverage: 'coverage',
     strokeColor: 'stroke color',
     radius: 'radius',
     outline: 'outline',
@@ -110,15 +113,17 @@ export default {
       geojson: 'geojson',
       cluster: 'cluster',
       icon: 'icon',
-      heatmap: ' heatmap',
-      h3: 'H3',
+      heatmap: 'heatmap',
+      hexagon: 'hexagon',
+      hexagonid: 'H3',
       trip: 'trip',
       s2: 'S2',
       '3d': '3D'
     }
   },
   layerVisConfigs: {
-    strokeWidth: 'Stroke Width',
+    angle: 'Angle',
+    strokeWidth: 'Stroke Width (Pixels)',
     strokeWidthRange: 'Stroke Width Range',
     radius: 'Radius',
     fixedRadius: 'Fixed Radius to meter',
@@ -140,6 +145,8 @@ export default {
     sizeScale: 'Size Scale',
     worldUnitSize: 'World Unit Size',
     elevationScale: 'Elevation Scale',
+    enableElevationZoomFactor: 'Use elevation zoom factor',
+    enableElevationZoomFactorDescription: 'Adjust elevation based on current zoom factor',
     heightScale: 'Height Scale',
     coverageRange: 'Coverage Range',
     highPrecisionRendering: 'High Precision Rendering',
@@ -185,6 +192,7 @@ export default {
     hide: 'hide',
     show: 'show',
     removeLayer: 'Remove layer',
+    duplicateLayer: 'Duplicate layer',
     layerSettings: 'Layer settings',
     closePanel: 'Close current panel',
     switchToDualView: 'Switch to dual map view',
@@ -199,7 +207,13 @@ export default {
     delete: 'Delete',
     timePlayback: 'Time Playback',
     cloudStorage: 'Cloud Storage',
-    '3DMap': '3D Map'
+    '3DMap': '3D Map',
+    animationByWindow: 'Moving Time Window',
+    animationByIncremental: 'Incremental Time Window',
+    speed: 'speed',
+    play: 'play',
+    pause: 'pause',
+    reset: 'reset'
   },
   toolbar: {
     exportImage: 'Export Image',
@@ -212,8 +226,7 @@ export default {
     rectangle: 'rectangle',
     hide: 'hide',
     show: 'show',
-    en: 'English',
-    fi: 'Suomi'
+    ...LOCALES
   },
   modal: {
     title: {
@@ -222,7 +235,7 @@ export default {
       exportImage: 'Export Image',
       exportData: 'Export Data',
       exportMap: 'Export Map',
-      addCustomMapboxStyle: 'Add Custom Mapbox Style',
+      addCustomMapboxStyle: 'Add Custom Map Style',
       saveMap: 'Save Map',
       shareURL: 'Share URL'
     },
@@ -264,7 +277,8 @@ export default {
       warning: 'you are going to delete this dataset. It will affect {length} layers'
     },
     addStyle: {
-      publishTitle: '1. Publish your style at mapbox or provide access token',
+      publishTitle:
+        '2. If entered mapbox stule url in step.1, publish your style at mapbox or provide access token. (Optional)',
       publishSubtitle1: 'You can create your own map style at',
       publishSubtitle2: 'and',
       publishSubtitle3: 'publish',
@@ -274,9 +288,12 @@ export default {
       publishSubtitle7:
         'here. *kepler.gl is a client-side application, data stays in your browser..',
       exampleToken: 'e.g. pk.abcdefg.xxxxxx',
-      pasteTitle: '2. Paste style url',
+      pasteTitle: '1. Paste style url',
+      pasteSubtitle0: 'Style url can be a mapbox',
       pasteSubtitle1: 'What is a',
       pasteSubtitle2: 'style URL',
+      pasteSubtitle3: 'or a style.json using the',
+      pasteSubtitle4: 'Mapbox GL Style Spec',
       namingTitle: '3. Name your style'
     },
     shareMap: {
@@ -374,7 +391,8 @@ export default {
   interactions: {
     tooltip: 'Tooltip',
     brush: 'Brush',
-    coordinate: 'Coordinates'
+    coordinate: 'Coordinates',
+    geocoder: 'Geocoder'
   },
   layerBlending: {
     title: 'Layer Blending',
@@ -389,18 +407,24 @@ export default {
     altitude: 'altitude',
     icon: 'icon',
     geojson: 'geojson',
+    token: 'token',
     arc: {
       lat0: 'source lat',
       lng0: 'source lng',
       lat1: 'target lat',
       lng1: 'target lng'
     },
+    line: {
+      alt0: 'source altitude',
+      alt1: 'target altitude'
+    },
     grid: {
       worldUnitSize: 'Grid Size (km)'
     },
     hexagon: {
       worldUnitSize: 'Hexagon Radius (km)'
-    }
+    },
+    hex_id: 'hex id'
   },
   color: {
     customPalette: 'Custom Palette',
@@ -422,11 +446,29 @@ export default {
       '*kepler.gl is a client-side application with no server backend. Data lives only on your machine/browser. ' +
       'No information or map data is sent to any server.',
     configUploadMessage:
-      'Upload **CSV**, **GeoJson** or saved map **Json**. Read more about [**supported file formats**]',
+      'Upload {fileFormatNames} or saved map **Json**. Read more about [**supported file formats**]',
     browseFiles: 'browse your files',
     uploading: 'Uploading',
     fileNotSupported: 'File {errorFiles} is not supported.',
     or: 'or'
+  },
+  geocoder: {
+    title: 'Enter an address or coordinates, ex 37.79,-122.40'
+  },
+  fieldSelector: {
+    clearAll: 'Clear All',
+    formatting: 'Formatting'
+  },
+  compare: {
+    modeLabel: 'Comparison Mode',
+    typeLabel: 'Comparison Type',
+    types: {
+      absolute: 'Absolute',
+      relative: 'Relative'
+    }
+  },
+  mapPopover: {
+    primary: 'Primary'
   },
   density: 'density',
   'Bug Report': 'Bug Report',

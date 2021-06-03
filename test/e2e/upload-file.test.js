@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -64,7 +64,7 @@ describe('Load map', () => {
 
       await page.waitForSelector('.preview-image-placeholder');
 
-      await page.waitFor(DEFAULT_WAIT_TIME.SHORT);
+      await page.waitFor(DEFAULT_WAIT_TIME.LONGER);
 
       await testScreenshot(page);
 

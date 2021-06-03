@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,16 +19,18 @@
 // THE SOFTWARE.
 
 import React, {useState} from 'react';
-import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import get from 'lodash.get';
+import {useIntl} from 'react-intl';
 
 import FileUploadFactory from 'components/common/file-uploader/file-upload';
 import LoadStorageMapFactory from './load-storage-map';
 import ModalTabsFactory from './modal-tabs';
-
 import LoadingDialog from './loading-dialog';
+
 import {LOADING_METHODS} from 'constants/default-settings';
+
+/** @typedef {import('./load-data-modal').LoadDataModalProps} LoadDataModalProps */
 
 const StyledLoadDataModal = styled.div.attrs({
   className: 'load-data-modal'
@@ -44,10 +46,14 @@ const getDefaultMethod = methods => (Array.isArray(methods) ? get(methods, [0]) 
 
 LoadDataModalFactory.deps = [ModalTabsFactory, FileUploadFactory, LoadStorageMapFactory];
 
-function LoadDataModalFactory(ModalTabs, FileUpload, LoadStorageMap) {
+export function LoadDataModalFactory(ModalTabs, FileUpload, LoadStorageMap) {
+  /** @type {React.FunctionComponent<LoadDataModalProps>} */
   const LoadDataModal = props => {
-    const {fileLoading, loadingMethods, isCloudMapLoading} = props;
+    const intl = useIntl();
+    const {loadingMethods, isCloudMapLoading} = props;
     const [currentMethod, toggleMethod] = useState(getDefaultMethod(loadingMethods));
+
+    const ElementType = currentMethod.elementType;
 
     return (
       <StyledLoadDataModal>
@@ -56,28 +62,13 @@ function LoadDataModalFactory(ModalTabs, FileUpload, LoadStorageMap) {
           loadingMethods={loadingMethods}
           toggleMethod={toggleMethod}
         />
-        {fileLoading || isCloudMapLoading ? (
+        {isCloudMapLoading ? (
           <LoadingDialog size={64} />
         ) : (
-          currentMethod && <currentMethod.elementType key={currentMethod.id} {...props} />
+          currentMethod && <ElementType key={currentMethod.id} intl={intl} {...props} />
         )}
       </StyledLoadDataModal>
     );
-  };
-
-  LoadDataModal.propTypes = {
-    // call backs
-    onFileUpload: PropTypes.func.isRequired,
-    onLoadCloudMap: PropTypes.func.isRequired,
-    fileLoading: PropTypes.bool,
-    loadingMethods: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string,
-        label: PropTypes.string,
-        elementType: PropTypes.elementType,
-        tabElementType: PropTypes.elementType
-      })
-    )
   };
 
   LoadDataModal.defaultProps = {
@@ -96,6 +87,7 @@ function LoadDataModalFactory(ModalTabs, FileUpload, LoadStorageMap) {
       }
     ]
   };
+
   return LoadDataModal;
 }
 

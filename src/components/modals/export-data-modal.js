@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,11 @@ import {
   StyledExportSection,
   StyledFilteredOption,
   StyledModalContent,
-  StyledType
+  StyledType,
+  CheckMark
 } from 'components/common/styled-components';
-import {FormattedMessage, injectIntl} from 'react-intl';
+import {injectIntl} from 'react-intl';
+import {FormattedMessage} from 'localization';
 
 const propTypes = {
   datasets: PropTypes.object.isRequired,
@@ -80,6 +82,7 @@ const ExportDataModalFactory = () => {
 
     render() {
       const {
+        supportedDataTypes,
         datasets,
         selectedDataset,
         dataType,
@@ -123,7 +126,7 @@ const ExportDataModalFactory = () => {
                 </div>
               </div>
               <div className="selection">
-                {EXPORT_DATA_TYPE_OPTIONS.map(op => (
+                {supportedDataTypes.map(op => (
                   <StyledType
                     key={op.id}
                     selected={dataType === op.id}
@@ -131,6 +134,7 @@ const ExportDataModalFactory = () => {
                     onClick={() => op.available && onChangeExportDataType(op.id)}
                   >
                     <FileType ext={op.label} height="80px" fontSize="11px" />
+                    {dataType === op.id && <CheckMark />}
                   </StyledType>
                 ))}
               </div>
@@ -156,6 +160,7 @@ const ExportDataModalFactory = () => {
                   <div className="filter-option-subtitle">
                     {getDataRowCount(datasets, selectedDataset, false, intl)}
                   </div>
+                  {!filtered && <CheckMark />}
                 </StyledFilteredOption>
                 <StyledFilteredOption
                   className="filtered-option"
@@ -168,6 +173,7 @@ const ExportDataModalFactory = () => {
                   <div className="filter-option-subtitle">
                     {getDataRowCount(datasets, selectedDataset, true, intl)}
                   </div>
+                  {filtered && <CheckMark />}
                 </StyledFilteredOption>
               </div>
             </StyledExportSection>
@@ -177,6 +183,10 @@ const ExportDataModalFactory = () => {
     }
   }
   ExportDataModal.propTypes = propTypes;
+  ExportDataModal.defaultProps = {
+    supportedDataTypes: EXPORT_DATA_TYPE_OPTIONS
+  };
+
   return injectIntl(ExportDataModal);
 };
 

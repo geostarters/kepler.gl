@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 import {Tooltip} from 'components/common/styled-components';
 
 const propTypes = {
@@ -34,32 +34,39 @@ const PanelHeaderBottom = styled.div.attrs({
   className: 'side-side-panel__header__bottom'
 })`
   background-color: ${props => props.theme.sidePanelHeaderBg};
+  border-bottom: 1px solid ${props => props.theme.sidePanelHeaderBorder};
   padding: 0 16px;
   display: flex;
   min-height: 30px;
 `;
 
-const PanelTab = styled.div.attrs({
-  className: 'side-panel__tab'
-})`
-  align-items: flex-end;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: ${props => (props.active ? props.theme.subtextColorActive : 'transparent')};
-  color: ${props => (props.active ? props.theme.subtextColorActive : props.theme.subtextColor)};
-  display: flex;
-  justify-content: center;
-  margin-right: 12px;
-  padding-bottom: 6px;
-  width: 30px;
+export function PanelTabFactory() {
+  const PanelTab = styled.div.attrs({
+    className: 'side-panel__tab'
+  })`
+    align-items: flex-end;
+    border-bottom-style: solid;
+    border-bottom-width: 2px;
+    border-bottom-color: ${props =>
+      props.active ? props.theme.panelToggleBorderColor : 'transparent'};
+    color: ${props => (props.active ? props.theme.subtextColorActive : props.theme.panelTabColor)};
+    display: flex;
+    justify-content: center;
+    margin-right: ${props => props.theme.panelToggleMarginRight}px;
+    padding-bottom: ${props => props.theme.panelToggleBottomPadding}px;
+    width: ${props => props.theme.panelTabWidth};
 
-  :hover {
-    cursor: pointer;
-    color: ${props => props.theme.textColorHl};
-  }
-`;
+    :hover {
+      cursor: pointer;
+      color: ${props => props.theme.textColorHl};
+    }
+  `;
 
-const PanelToggleFactory = () => {
+  return PanelTab;
+}
+
+PanelToggleFactory.deps = [PanelTabFactory];
+function PanelToggleFactory(PanelTab) {
   const PanelToggle = ({panels, activePanel, togglePanel}) => (
     <PanelHeaderBottom>
       {panels.map(panel => (
@@ -83,6 +90,6 @@ const PanelToggleFactory = () => {
 
   PanelToggle.propTypes = propTypes;
   return PanelToggle;
-};
+}
 
 export default PanelToggleFactory;

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// @ts-ignore
 import window from 'global/window';
 
 /**
@@ -117,7 +118,7 @@ export function toArray(item) {
  * @param {*} value
  * @returns {Array|Object}
  */
-const insertValue = (obj, key, value) => {
+export const insertValue = (obj, key, value) => {
   if (Array.isArray(obj) && typeof key === 'number') {
     return [...obj.slice(0, key), value, ...obj.slice(key + 1, obj.length)];
   }
@@ -143,6 +144,7 @@ const setPath = ([key, ...next], value, obj) => {
     return insertValue(obj, key, value);
   }
 
+  // @ts-ignore
   return insertValue(obj, key, setPath(next, value, obj.hasOwnProperty(key) ? obj[key] : {}));
 };
 
@@ -153,6 +155,7 @@ const setPath = ([key, ...next], value, obj) => {
  * @param {Object} obj
  * @returns {Object}
  */
+// @ts-ignore
 export const set = (path, value, obj) => (obj === null ? obj : setPath(path, value, obj));
 
 /**
@@ -183,5 +186,18 @@ export function getError(err) {
       : JSON.stringify(err);
   }
 
+  // @ts-ignore
   return null;
+}
+
+export function arrayInsert(arr, index, val) {
+  if (!Array.isArray(arr)) {
+    return arr;
+  }
+
+  return [...arr.slice(0, index), val, ...arr.slice(index)];
+}
+
+export function isTest() {
+  return process?.env?.NODE_ENV === 'test';
 }

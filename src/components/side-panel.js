@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 import React, {PureComponent} from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage} from 'localization';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import get from 'lodash.get';
@@ -36,14 +36,13 @@ import CustomPanelsFactory from './side-panel/custom-panel';
 import {
   ADD_DATA_ID,
   ADD_MAP_STYLE_ID,
-  DATA_TABLE_ID,
-  EXPORT_IMAGE_ID,
   EXPORT_DATA_ID,
   EXPORT_MAP_ID,
-  SAVE_MAP_ID,
   SHARE_MAP_ID,
   SIDEBAR_PANELS,
-  OVERWRITE_MAP_ID
+  OVERWRITE_MAP_ID,
+  SAVE_MAP_ID,
+  EXPORT_IMAGE_ID
 } from 'constants/default-settings';
 
 const SidePanelContent = styled.div`
@@ -52,11 +51,18 @@ const SidePanelContent = styled.div`
   padding: ${props => props.theme.sidePanelInnerPadding}px;
   overflow-y: scroll;
   overflow-x: hidden;
+
+  .side-panel__content__inner {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+  }
 `;
 
 export const PanelTitleFactory = () => styled.div`
   color: ${props => props.theme.titleTextColor};
-  font-size: 20px;
+  font-size: ${props => props.theme.sidePanelTitleFontsize};
+  line-height: ${props => props.theme.sidePanelTitleLineHeight};
   font-weight: 400;
   letter-spacing: 1.25px;
   margin-bottom: 14px;
@@ -89,7 +95,6 @@ export default function SidePanelFactory(
   MapManager,
   CustomPanels
 ) {
-  const customPanels = get(CustomPanels, ['defaultProps', 'panels']) || [];
   const getCustomPanelProps = get(CustomPanels, ['defaultProps', 'getProps']) || (() => ({}));
 
   class SidePanel extends PureComponent {
@@ -126,9 +131,7 @@ export default function SidePanelFactory(
     };
 
     _showDatasetTable = dataId => {
-      // this will open data table modal
       this.props.visStateActions.showDatasetTable(dataId);
-      this.props.uiStateActions.toggleModal(DATA_TABLE_ID);
     };
 
     _showAddDataModal = () => {
@@ -150,15 +153,15 @@ export default function SidePanelFactory(
 
     _onClickExportMap = () => this.props.uiStateActions.toggleModal(EXPORT_MAP_ID);
 
-    _onClickSaveToStorage = () => {
+    _onClickSaveToStorage = () =>
       this.props.uiStateActions.toggleModal(this.props.mapSaved ? OVERWRITE_MAP_ID : SAVE_MAP_ID);
-    };
 
     _onClickSaveAsToStorage = () => {
       // add (copy) to file name
       this.props.visStateActions.setMapInfo({
         title: `${this.props.mapInfo.title || 'Kepler.gl'} (Copy)`
       });
+
       this.props.uiStateActions.toggleModal(SAVE_MAP_ID);
     };
 
@@ -181,12 +184,12 @@ export default function SidePanelFactory(
         visStateActions,
         mapStyleActions,
         uiStateActions,
-        availableProviders
+        availableProviders,
+        panels
       } = this.props;
 
       const {activeSidePanel} = uiState;
       const isOpen = Boolean(activeSidePanel);
-      const panels = [...this.props.panels, ...customPanels];
 
       const layerManagerActions = {
         addLayer: visStateActions.addLayer,
@@ -201,6 +204,7 @@ export default function SidePanelFactory(
         showDatasetTable: this._showDatasetTable,
         showAddDataModal: this._showAddDataModal,
         removeLayer: visStateActions.removeLayer,
+        duplicateLayer: visStateActions.duplicateLayer,
         removeDataset: this._removeDataset,
         openModal: uiStateActions.toggleModal
       };
@@ -262,7 +266,7 @@ export default function SidePanelFactory(
               togglePanel={uiStateActions.toggleSidePanel}
             />
             <SidePanelContent className="side-panel__content">
-              <div>
+              <div className="side-panel__content__inner">
                 <PanelTitle className="side-panel__content__title">
                   <FormattedMessage
                     id={(panels.find(({id}) => id === activeSidePanel) || {}).label}
@@ -297,12 +301,10 @@ export default function SidePanelFactory(
                 {activeSidePanel === 'map' && (
                   <MapManager {...mapManagerActions} mapStyle={this.props.mapStyle} />
                 )}
-                {(customPanels || []).find(p => p.id === activeSidePanel) ? (
-                  <CustomPanels
-                    {...getCustomPanelProps(this.props)}
-                    activeSidePanel={activeSidePanel}
-                  />
-                ) : null}
+                <CustomPanels
+                  {...getCustomPanelProps(this.props)}
+                  activeSidePanel={activeSidePanel}
+                />
               </div>
             </SidePanelContent>
           </Sidebar>

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 import React, {useMemo, useCallback} from 'react';
 import {StyledFilterContent} from 'components/common/styled-components';
 import PolygonFilterFactory from 'components/filters/polygon-filter';
-import PanelHeaderAction from 'components/side-panel/panel-header-action';
+import PanelHeaderActionFactory from 'components/side-panel/panel-header-action';
 import {EyeSeen} from 'components/common/icons';
 import {EyeUnseen} from 'components/common/icons';
 import FilterPanelHeaderFactory from 'components/side-panel/filter-panel/filter-panel-header';
@@ -29,26 +29,28 @@ import {StyledFilterPanel} from '../components';
 
 import get from 'lodash.get';
 
-PolygonFilterPanelFactory.deps = [FilterPanelHeaderFactory, PolygonFilterFactory];
+PolygonFilterPanelFactory.deps = [
+  FilterPanelHeaderFactory,
+  PolygonFilterFactory,
+  PanelHeaderActionFactory
+];
 
-function PolygonFilterPanelFactory(FilterPanelHeader, PolygonFilter) {
+function PolygonFilterPanelFactory(FilterPanelHeader, PolygonFilter, PanelHeaderAction) {
+  /** @type {import('./filter-panel-types').FilterPanelComponent} */
   const PolygonFilterPanel = React.memo(
     ({
       idx,
       datasets,
       layers,
-      layerData,
       allAvailableFields,
       filter,
-      isAnyFilterAnimating,
-      enlargeFilter,
       removeFilter,
       setFilter,
       toggleFilterFeature
     }) => {
       const filterDatasets = useMemo(() => filter.dataId.map(d => datasets[d]), [filter, datasets]);
 
-      const onSetLayers = useCallback(value => setFilter(idx, 'layerId', value), [setFilter]);
+      const onSetLayers = useCallback(value => setFilter(idx, 'layerId', value), [setFilter, idx]);
 
       const isVisible = get(filter, ['value', 'properties', 'isVisible'], true);
       const featureType = get(filter, ['value', 'properties', 'renderType'], true);

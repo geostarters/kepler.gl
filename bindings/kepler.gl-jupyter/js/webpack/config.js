@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -90,6 +90,20 @@ module.exports = {
   html: buildHtml(rules, plugins),
 
   umd: {
+    // Embeddable {{ cookiecutter.npm_package_name }} bundle
+     
+    //  This bundle is generally almost identical to the notebook bundle
+    //  containing the custom widget views and models.
+     
+    //  The only difference is in the configuration of the webpack public path
+    //  for the static assets.
+     
+    //  It will be automatically distributed by unpkg to work with the static
+    //  widget embedder.
+     
+    //  The target bundle is always `dist/index.js`, which is the path required
+    //  by the custom widget embedder.
+     
     entry: path.resolve(__dirname, '../lib/embed.js'),
     output: {
       filename: 'index.js',

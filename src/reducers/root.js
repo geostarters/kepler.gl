@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,16 @@ export function provideInitialState(initialState) {
 
   const handleRegisterEntry = (
     state,
-    {payload: {id, mint, mapboxApiAccessToken, mapboxApiUrl, mapStylesReplaceDefault}}
+    {
+      payload: {
+        id,
+        mint,
+        mapboxApiAccessToken,
+        mapboxApiUrl,
+        mapStylesReplaceDefault,
+        initialUiState
+      }
+    }
   ) => {
     // by default, always create a mint state even if the same id already exist
     // if state.id exist and mint=false, keep the existing state
@@ -44,7 +53,7 @@ export function provideInitialState(initialState) {
       ...state,
       [id]: coreReducer(
         previousState,
-        keplerGlInit({mapboxApiAccessToken, mapboxApiUrl, mapStylesReplaceDefault})
+        keplerGlInit({mapboxApiAccessToken, mapboxApiUrl, mapStylesReplaceDefault, initialUiState})
       )
     };
   };
@@ -75,14 +84,14 @@ export function provideInitialState(initialState) {
     });
 
     // perform additional state reducing (e.g. switch action.type etc...)
-    return handleActions(
-      {
-        [ActionTypes.REGISTER_ENTRY]: handleRegisterEntry,
-        [ActionTypes.DELETE_ENTRY]: handleDeleteEntry,
-        [ActionTypes.RENAME_ENTRY]: handleRenameEntry
-      },
-      initialCoreState
-    )(state, action);
+    const handlers = {
+      [ActionTypes.REGISTER_ENTRY]: handleRegisterEntry,
+      [ActionTypes.DELETE_ENTRY]: handleDeleteEntry,
+      [ActionTypes.RENAME_ENTRY]: handleRenameEntry
+    };
+
+    // @ts-ignore
+    return handleActions(handlers, initialCoreState)(state, action);
   };
 }
 

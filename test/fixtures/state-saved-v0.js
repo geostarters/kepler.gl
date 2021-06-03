@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -888,6 +888,7 @@ export const mergedFilters = [
     id: 'vxzfwyg2v',
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     name: ['song_name'],
     type: 'multiSelect',
     fieldIdx: [0],
@@ -907,6 +908,7 @@ export const mergedFilters = [
     id: 'fo9tjm2unl',
     enlarged: true,
     isAnimating: false,
+    animationWindow: 'free',
     name: ['timestamp_local'],
     type: 'timeRange',
     fieldIdx: [3],
@@ -933,7 +935,8 @@ export const mergedFilters = [
     fieldType: 'timestamp',
     fixedDomain: true,
     gpu: true,
-    gpuChannel: [0]
+    gpuChannel: [0],
+    defaultTimeFormat: 'L LTS'
   },
   {
     dataId: ['9h10t7fyb'],
@@ -944,6 +947,7 @@ export const mergedFilters = [
     value: false,
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     fieldIdx: [10],
     domain: [true, false],
     fieldType: 'boolean',
@@ -968,6 +972,7 @@ export const mergedFilters = [
     histogram: ['not tested'],
     enlargedHistogram: ['not tested'],
     isAnimating: false,
+    animationWindow: 'free',
     fieldIdx: [9],
     domain: [78, 694],
     step: 1,
@@ -984,6 +989,7 @@ export const mergedFilters = [
     id: '5nfmxjjzl',
     enlarged: false,
     isAnimating: false,
+    animationWindow: 'free',
     name: ['ZIP_CODE'],
     type: 'range',
     fieldIdx: [2],
@@ -1039,7 +1045,7 @@ mergedLayer0.config = {
   sizeScale: 'linear',
   sizeDomain: [0, 1],
   textLabel: [DEFAULT_TEXT_LABEL],
-
+  hidden: false,
   visConfig: {
     radius: 270.4,
     opacity: 0.8,
@@ -1107,6 +1113,7 @@ mergedLayer1.config = {
     color: DEFAULT_COLOR_UI,
     colorRange: DEFAULT_COLOR_UI
   },
+  hidden: false,
   visConfig: {
     opacity: 0.41,
     thickness: 2,
@@ -1150,10 +1157,10 @@ mergedLayer2.config = {
   colorField: {
     name: 'song_name',
     type: 'string',
-    id: 'song_name',
     format: '',
-    tableFieldIndex: 1,
-    analyzerType: 'STRING'
+    fieldIdx: 0,
+    analyzerType: 'STRING',
+    valueAccessor: values => values[0]
   },
   colorScale: 'ordinal',
   colorDomain: ['2.103.2', '2.107.3', '2.116.2', '2.117.1', '3.68.4'],
@@ -1163,10 +1170,10 @@ mergedLayer2.config = {
   sizeField: {
     name: 'int_range',
     format: '',
-    id: 'int_range',
     type: 'integer',
-    tableFieldIndex: 10,
-    analyzerType: 'INT'
+    fieldIdx: 9,
+    analyzerType: 'INT',
+    valueAccessor: values => values[9]
   },
   sizeDomain: [78, 694],
   sizeScale: 'sqrt',
@@ -1175,6 +1182,7 @@ mergedLayer2.config = {
     color: DEFAULT_COLOR_UI,
     colorRange: DEFAULT_COLOR_UI
   },
+  hidden: false,
   visConfig: {
     radius: 10,
     opacity: 0.8,
@@ -1224,14 +1232,15 @@ mergedLayer3.config = {
       fieldIdx: 2
     }
   },
+  hidden: false,
   isVisible: true,
   colorField: {
     name: 'int_range',
-    id: 'int_range',
     type: 'integer',
     format: '',
-    tableFieldIndex: 10,
-    analyzerType: 'INT'
+    fieldIdx: 9,
+    analyzerType: 'INT',
+    valueAccessor: values => values[9]
   },
   highlightColor: [252, 242, 26, 255],
   isConfigActive: false,
@@ -1262,7 +1271,8 @@ mergedLayer3.config = {
     sizeRange: [0, 50],
     percentile: [0, 100],
     elevationPercentile: [0, 100],
-    elevationScale: 10
+    elevationScale: 10,
+    enableElevationZoomFactor: true
   },
   animation: {enabled: false}
 };
@@ -1285,14 +1295,15 @@ mergedLayer4.config = {
   },
   highlightColor: [252, 242, 26, 255],
   isConfigActive: false,
+  hidden: false,
   isVisible: true,
   colorField: {
     name: 'ID',
-    id: 'ID',
     type: 'integer',
     format: '',
-    tableFieldIndex: 4,
-    analyzerType: 'INT'
+    fieldIdx: 3,
+    analyzerType: 'INT',
+    valueAccessor: values => values[3]
   },
   colorScale: 'quantize',
   colorDomain: [94107, 94132],
@@ -1370,6 +1381,7 @@ mergedLayer4.config = {
     radiusRange: [0, 50],
     heightRange: [0, 500],
     elevationScale: 5,
+    enableElevationZoomFactor: true,
     stroked: false,
     filled: true,
     enable3d: false,
@@ -1464,9 +1476,33 @@ export const mergedInteractions = {
     ...defaultInteraction.tooltip,
     enabled: true,
     config: {
+      compareMode: false,
+      compareType: 'absolute',
       fieldsToShow: {
-        '9h10t7fyb': ['int_range', 'detail', 'type_boolean'],
-        v79816te8: ['ID', 'ZIP_CODE']
+        '9h10t7fyb': [
+          {
+            name: 'int_range',
+            format: null
+          },
+          {
+            name: 'detail',
+            format: null
+          },
+          {
+            name: 'type_boolean',
+            format: null
+          }
+        ],
+        v79816te8: [
+          {
+            name: 'ID',
+            format: null
+          },
+          {
+            name: 'ZIP_CODE',
+            format: null
+          }
+        ]
       }
     }
   }

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,17 +20,9 @@
 
 import React, {useState} from 'react';
 import styled from 'styled-components';
-import {MapControlFactory, Icons, IconRoundSmall, MapControlButton} from 'kepler.gl/components';
+import {Icons, IconRoundSmall, MapControlButton} from 'kepler.gl/components';
+
 import ReactMarkdown from 'react-markdown';
-
-const MapControl = MapControlFactory();
-
-const StyledMapControlOverlay = styled.div`
-  position: absolute;
-  top: 0px;
-  right: 0px;
-  z-index: 1;
-`;
 
 const StyledFloatingPanel = styled.div`
   margin-right: 12px;
@@ -130,7 +122,7 @@ function getURL(url) {
     : url;
 }
 
-function SampleMapPanel(props) {
+export function SampleMapPanel(props) {
   const [isActive, setActive] = useState(true);
 
   return (
@@ -175,12 +167,3 @@ function SampleMapPanel(props) {
     </StyledFloatingPanel>
   );
 }
-
-const CustomMapControl = props => (
-  <StyledMapControlOverlay>
-    {!props.isExport && props.currentSample ? <SampleMapPanel {...props} /> : null}
-    <MapControl {...props} />
-  </StyledMapControlOverlay>
-);
-
-export default CustomMapControl;
