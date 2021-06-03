@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 import React from 'react';
 import TimeRangeSliderFactory from 'components/common/time-range-slider';
 
@@ -51,3 +52,53 @@ function TimeRangeFilterFactory(TimeRangeSlider) {
 }
 
 export default TimeRangeFilterFactory;
+=======
+import React from 'react';
+import TimeRangeSliderFactory from 'components/common/time-range-slider';
+import {DEFAULT_TIME_FORMAT} from 'constants/default-settings';
+
+/*
+ * TimeRangeFilter -> TimeRangeSlider -> RangeSlider
+ */
+export function timeRangeSliderFieldsSelector(filter) {
+  const hasUserFormat = typeof filter.timeFormat === 'string';
+  const timeFormat =
+    (hasUserFormat ? filter.timeFormat : filter.defaultTimeFormat) || DEFAULT_TIME_FORMAT;
+
+  return {
+    id: filter.id,
+    domain: filter.domain,
+    bins: filter.bins,
+    value: filter.value,
+    plotType: filter.plotType,
+    lineChart: filter.lineChart,
+    yAxis: filter.yAxis,
+    step: filter.step,
+    speed: filter.speed,
+    histogram: filter.enlarged ? filter.enlargedHistogram : filter.histogram,
+    isEnlarged: filter.enlarged,
+    animationWindow: filter.animationWindow,
+    isAnimating: filter.isAnimating,
+    timezone: filter.timezone,
+    timeFormat
+  };
+}
+
+TimeRangeFilterFactory.deps = [TimeRangeSliderFactory];
+
+function TimeRangeFilterFactory(TimeRangeSlider) {
+  const TimeRangeFilter = ({filter, setFilter, isAnimatable, toggleAnimation, hideTimeTitle}) => (
+    <TimeRangeSlider
+      {...timeRangeSliderFieldsSelector(filter)}
+      onChange={setFilter}
+      toggleAnimation={toggleAnimation}
+      isAnimatable={isAnimatable}
+      hideTimeTitle={hideTimeTitle}
+    />
+  );
+
+  return TimeRangeFilter;
+}
+
+export default TimeRangeFilterFactory;
+>>>>>>> master

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 // import './browser/index.js';
 require('@probe.gl/test-utils/polyfill');
 
@@ -34,3 +35,20 @@ test('Browser tests', t => {
 
   t.end();
 });
+=======
+// import './browser/index.js';
+require('@probe.gl/test-utils/polyfill');
+
+const test = require('tape-catch');
+const enableDOMLogging = require('@probe.gl/test-utils')._enableDOMLogging;
+enableDOMLogging();
+
+test.onFinish(window.browserTestDriver_finish);
+test.onFailure(window.browserTestDriver_fail);
+
+test('Browser tests', t => {
+  require('./node/index.js');
+  require('./browser/index.js');
+  t.end();
+});
+>>>>>>> master

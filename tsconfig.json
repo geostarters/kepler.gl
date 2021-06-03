@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "compilerOptions": {
     "target": "es2020",
@@ -54,3 +55,41 @@
     // "src/tasks"
   ]
 }
+=======
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "allowJs": true,
+    "checkJs": true,
+    "jsx": "react",
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "outDir": "build/dist",
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "suppressImplicitAnyIndexErrors": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": "./src",
+    "paths": {
+      "*": ["*"]
+    }
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/deckgl-layers",
+    "src/layers"
+  ]
+}
+>>>>>>> master

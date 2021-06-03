@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
@@ -61,3 +62,39 @@ const MapLayerSelector = ({layers, onMapToggleLayer}) => (
 MapLayerSelector.propTypes = propTypes;
 
 export default MapLayerSelector;
+=======
+import React from 'react';
+import styled from 'styled-components';
+import Checkbox from 'components/common/checkbox';
+import {generateHashId} from '../../utils/utils';
+
+const MapLayerSelect = styled.div`
+  padding: 12px;
+
+  .map-layer-selector__item {
+    margin: 12px 0;
+  }
+`;
+
+/** @type {typeof import('./map-layer-selector').default} */
+const MapLayerSelector = ({layers, onMapToggleLayer}) => (
+  <MapLayerSelect className="map-layer-selector">
+    {layers.map((layer, index) => (
+      <div key={layer.id} className="map-layer-selector__item">
+        <Checkbox
+          type="radio"
+          checked={layer.isVisible}
+          id={`${layer.id}-toggle-${generateHashId(4)}`}
+          label={layer.name}
+          onChange={e => {
+            e.preventDefault();
+            onMapToggleLayer(layer.id);
+          }}
+        />
+      </div>
+    ))}
+  </MapLayerSelect>
+);
+
+export default MapLayerSelector;
+>>>>>>> master

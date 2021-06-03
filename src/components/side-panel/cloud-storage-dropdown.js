@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 import React from 'react';
 import {PanelHeaderDropdownFactory, Icons} from 'kepler.gl/components';
 
@@ -50,3 +51,37 @@ const CloudStorageDropdown = ({show, onClose}) => {
 };
 
 export default CloudStorageDropdown;
+=======
+import React from 'react';
+import {PanelHeaderDropdownFactory, Icons} from 'components';
+
+const CloudStorageItems = [
+  {
+    label: 'Save',
+    icon: Icons.Save2,
+    key: 'data',
+    onClick: props => props.onSaveMap
+  },
+  {
+    label: 'Settings',
+    icon: Icons.Gear,
+    key: 'settings',
+    onClick: props => props.onExportData
+  }
+];
+
+const PanelHeaderDropdown = PanelHeaderDropdownFactory();
+
+const CloudStorageDropdown = ({show, onClose}) => {
+  return (
+    <PanelHeaderDropdown
+      items={CloudStorageItems}
+      show={show}
+      onClose={onClose}
+      id="cloud-storage"
+    />
+  );
+};
+
+export default CloudStorageDropdown;
+>>>>>>> master

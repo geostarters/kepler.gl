@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 import React, {useMemo, useCallback} from 'react';
 import {StyledFilterContent} from 'components/common/styled-components';
 import PolygonFilterFactory from 'components/filters/polygon-filter';
@@ -93,3 +94,81 @@ function PolygonFilterPanelFactory(FilterPanelHeader, PolygonFilter, PanelHeader
 }
 
 export default PolygonFilterPanelFactory;
+=======
+import React, {useMemo, useCallback} from 'react';
+import {StyledFilterContent} from 'components/common/styled-components';
+import PolygonFilterFactory from 'components/filters/polygon-filter';
+import PanelHeaderActionFactory from 'components/side-panel/panel-header-action';
+import {EyeSeen} from 'components/common/icons';
+import {EyeUnseen} from 'components/common/icons';
+import FilterPanelHeaderFactory from 'components/side-panel/filter-panel/filter-panel-header';
+import {StyledFilterPanel} from '../components';
+
+import get from 'lodash.get';
+
+PolygonFilterPanelFactory.deps = [
+  FilterPanelHeaderFactory,
+  PolygonFilterFactory,
+  PanelHeaderActionFactory
+];
+
+function PolygonFilterPanelFactory(FilterPanelHeader, PolygonFilter, PanelHeaderAction) {
+  /** @type {import('./filter-panel-types').FilterPanelComponent} */
+  const PolygonFilterPanel = React.memo(
+    ({
+      idx,
+      datasets,
+      layers,
+      allAvailableFields,
+      filter,
+      removeFilter,
+      setFilter,
+      toggleFilterFeature
+    }) => {
+      const filterDatasets = useMemo(() => filter.dataId.map(d => datasets[d]), [filter, datasets]);
+
+      const onSetLayers = useCallback(value => setFilter(idx, 'layerId', value), [setFilter, idx]);
+
+      const isVisible = get(filter, ['value', 'properties', 'isVisible'], true);
+      const featureType = get(filter, ['value', 'properties', 'renderType'], true);
+
+      return (
+        <div className="polygon-filter-panel">
+          <FilterPanelHeader
+            datasets={filterDatasets}
+            allAvailableFields={allAvailableFields}
+            idx={idx}
+            filter={filter}
+            removeFilter={removeFilter}
+          >
+            <StyledFilterPanel>Geo - {featureType}</StyledFilterPanel>
+            <PanelHeaderAction
+              id={filter.id}
+              onClick={toggleFilterFeature}
+              tooltip={isVisible ? 'tooltip.hideFeature' : 'tooltip.showFeature'}
+              IconComponent={isVisible ? EyeSeen : EyeUnseen}
+              active={isVisible}
+            />
+          </FilterPanelHeader>
+          <StyledFilterContent className="filter-panel__content">
+            <div className="filter-panel__filter">
+              <PolygonFilter
+                filter={filter}
+                layers={layers}
+                setLayers={onSetLayers}
+                toggleFilterFeature={toggleFilterFeature}
+              />
+            </div>
+          </StyledFilterContent>
+        </div>
+      );
+    }
+  );
+
+  PolygonFilterPanel.displayName = 'PolygonFilterPanel';
+
+  return PolygonFilterPanel;
+}
+
+export default PolygonFilterPanelFactory;
+>>>>>>> master

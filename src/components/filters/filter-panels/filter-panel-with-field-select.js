@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 import React, {useCallback, useMemo} from 'react';
 import {StyledFilterContent} from 'components/common/styled-components';
 import FilterPanelHeaderFactory from 'components/side-panel/filter-panel/filter-panel-header';
@@ -115,3 +116,103 @@ function FieldPanelWithFieldSelectFactory(
 }
 
 export default FieldPanelWithFieldSelectFactory;
+=======
+import React, {useCallback, useMemo} from 'react';
+import {StyledFilterContent} from 'components/common/styled-components';
+import FilterPanelHeaderFactory from 'components/side-panel/filter-panel/filter-panel-header';
+import PanelHeaderActionFactory from 'components/side-panel/panel-header-action';
+import SourceDataSelectorFactory from 'components/side-panel/common/source-data-selector';
+import FieldSelectorFactory from '../../common/field-selector';
+
+FieldPanelWithFieldSelectFactory.deps = [
+  FilterPanelHeaderFactory,
+  SourceDataSelectorFactory,
+  FieldSelectorFactory,
+  PanelHeaderActionFactory
+];
+
+function FieldPanelWithFieldSelectFactory(
+  FilterPanelHeader,
+  SourceDataSelector,
+  FieldSelector,
+  PanelHeaderAction
+) {
+  /** @type {import('./filter-panel-types').FilterPanelComponent} */
+  const FilterPanelWithFieldSelect = React.memo(
+    ({
+      allAvailableFields,
+      children,
+      datasets,
+      filter,
+      idx,
+      removeFilter,
+      setFilter,
+      panelActions = []
+    }) => {
+      const onFieldSelector = useCallback(field => setFilter(idx, 'name', field.name), [
+        idx,
+        setFilter
+      ]);
+
+      const onSourceDataSelector = useCallback(value => setFilter(idx, 'dataId', [value]), [
+        idx,
+        setFilter
+      ]);
+
+      const fieldValue = useMemo(
+        () => ((Array.isArray(filter.name) ? filter.name[0] : filter.name)),
+        [filter.name]
+      );
+
+      return (
+        <>
+          <FilterPanelHeader
+            datasets={[datasets[filter.dataId[0]]]}
+            allAvailableFields={allAvailableFields}
+            idx={idx}
+            filter={filter}
+            removeFilter={removeFilter}
+          >
+            <FieldSelector
+              inputTheme="secondary"
+              fields={allAvailableFields}
+              value={fieldValue}
+              erasable={false}
+              onSelect={onFieldSelector}
+            />
+            {panelActions &&
+              panelActions.map(panelAction => (
+                <PanelHeaderAction
+                  id={panelAction.id}
+                  key={panelAction.id}
+                  onClick={panelAction.onClick}
+                  tooltip={panelAction.tooltip}
+                  IconComponent={panelAction.iconComponent}
+                  active={panelAction.active}
+                />
+              ))}
+          </FilterPanelHeader>
+          <StyledFilterContent className="filter-panel__content">
+            {Object.keys(datasets).length > 1 && (
+              <SourceDataSelector
+                inputTheme="secondary"
+                datasets={datasets}
+                disabled={filter.freeze}
+                dataId={filter.dataId}
+                onSelect={onSourceDataSelector}
+              />
+            )}
+            {children}
+          </StyledFilterContent>
+        </>
+      );
+    }
+  );
+
+  FilterPanelWithFieldSelect.displayName = 'FilterPanelWithFieldSelect';
+
+  return FilterPanelWithFieldSelect;
+}
+
+export default FieldPanelWithFieldSelectFactory;
+>>>>>>> master

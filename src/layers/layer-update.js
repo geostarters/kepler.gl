@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<< HEAD
 /* eslint-disable guard-for-in */
 
 /**
@@ -68,3 +69,56 @@ function compareUpdateTrigger(newTriggers, oldTriggers, triggerName) {
 
   return null;
 }
+=======
+/* eslint-disable guard-for-in */
+
+/**
+ *
+ * @param {Object} updateTriggers {getPosition: {column}, getData: {filteredIndex}}
+ * @param {Object} oldUpdateTriggers
+ * @returns {boolean|object} `false` if nothing changed, or `triggerChanged` as an object
+ */
+export function diffUpdateTriggers(updateTriggers, oldUpdateTriggers = {}) {
+  const triggerChanged = {};
+  /** @type {boolean|object} */
+  let reason = false;
+
+  for (const triggerName in updateTriggers) {
+    const newTriggers = updateTriggers[triggerName] || {};
+    const oldTriggers = oldUpdateTriggers[triggerName] || {};
+    const diffReason = compareUpdateTrigger(newTriggers, oldTriggers, triggerName);
+
+    if (diffReason) {
+      triggerChanged[triggerName] = true;
+      reason = triggerChanged;
+    }
+  }
+
+  return reason;
+}
+
+function compareUpdateTrigger(newTriggers, oldTriggers, triggerName) {
+  if (typeof oldTriggers !== 'object') {
+    return oldTriggers === newTriggers ? null : `${triggerName} changed shallowly`;
+  }
+
+  for (const key in oldTriggers) {
+    if (!(key in newTriggers)) {
+      return `${triggerName}.${key} deleted`;
+    }
+
+    // shallow compare
+    if (oldTriggers[key] !== newTriggers[key]) {
+      return `${triggerName}.${key} changed shallowly`;
+    }
+  }
+
+  for (const key in newTriggers) {
+    if (!(key in oldTriggers)) {
+      return `${triggerName}.${key} added`;
+    }
+  }
+
+  return null;
+}
+>>>>>>> master
